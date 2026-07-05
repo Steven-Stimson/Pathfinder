@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - "v*.*"
-    branches: [ dev, 'BandagePro*' ]
+    branches: [ dev, Pathfinder, 'BandagePro*' ]
 
 env:
   BUILD_TYPE: Release
@@ -38,7 +38,16 @@ jobs:
           version: ${{env.QT_VERSION}}
 
       - name: '⚙️ Install dependencies'
-        run: sudo apt-get install -y appstream libxcb-cursor0
+        run: sudo apt-get install -y appstream libxcb-cursor0 glpk-utils
+
+      - name: '⚙️ Build TTT standalone binary'
+        run: |
+          cd ${{github.workspace}}/thirdparty/TTT
+          pip3 install -r requirements.txt pyinstaller
+          cp $(which glpsol) .
+          pyinstaller --onefile --name ttt --add-data "glpsol:." TTT.py
+          cp dist/ttt ttt
+          chmod +x ttt
 
       - name: '⚙️ Configure CMake'
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=/usr -G Ninja
@@ -94,6 +103,16 @@ jobs:
           cache-key-prefix: ${{ runner.os }}-QtCache
           version: ${{env.QT_VERSION}}
 
+      - name: '⚙️ Build TTT standalone binary'
+        run: |
+          brew install glpk
+          cd ${{github.workspace}}/thirdparty/TTT
+          pip3 install -r requirements.txt pyinstaller
+          cp $(which glpsol) .
+          pyinstaller --onefile --name ttt --add-data "glpsol:." TTT.py
+          cp dist/ttt ttt
+          chmod +x ttt
+
       - name: '⚙️ Configure CMake'
         # Build arm64 only: the Qt 6.7.3 x86_64 slice links the deprecated AGL
         # framework, which is not present on macOS 26 / Xcode 26 runners. AGL is
@@ -142,6 +161,16 @@ jobs:
           cache: true
           cache-key-prefix: ${{ runner.os }}-QtCache
           version: ${{env.QT_VERSION}}
+
+      - name: '⚙️ Build TTT standalone binary'
+        shell: bash
+        run: |
+          choco install glpk -y
+          cd ${{github.workspace}}/thirdparty/TTT
+          pip install -r requirements.txt pyinstaller
+          cp "/c/Program Files (x86)/GnuWin32/bin/glpsol.exe" . 2>/dev/null || cp "/c/Program Files/GnuWin32/bin/glpsol.exe" . 2>/dev/null || true
+          pyinstaller --onefile --name ttt --add-data "glpsol.exe;." TTT.py
+          cp dist/ttt.exe ttt.exe
 
       - name: '⚙️ Configure CMake'
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=/usr -G Ninja

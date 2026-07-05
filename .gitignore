@@ -65,6 +65,14 @@ Bandage.app
 # build dir
 build
 
+# PyInstaller build artifacts
+thirdparty/TTT/build/
+thirdparty/TTT/dist/
+thirdparty/TTT/*.spec
+thirdparty/TTT/__pycache__/
+thirdparty/TTT/ttt.bak
+*.pyc
+
 # Misc
 *DS_Store*
 Bandage.pro.user*

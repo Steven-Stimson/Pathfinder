@@ -613,7 +613,15 @@ namespace io {
             pathNodes.reserve(record.segments.size());
 
             for (const auto &node: record.segments) {
-                auto nodeIt = graph.m_deBruijnGraphNodes.find(node);
+                char orientation = node.front();
+                std::string nodeName(node.begin() + 1, node.end());
+                if (orientation == '>')
+                    nodeName.push_back('+');
+                else if (orientation == '<')
+                    nodeName.push_back('-');
+                // else: no orientation prefix, use as-is (backward compat)
+
+                auto nodeIt = graph.m_deBruijnGraphNodes.find(nodeName);
                 if (nodeIt == graph.m_deBruijnGraphNodes.end())
                     return llvm::createStringError(llvm::Twine("malformed path string for path '")
                                                + record.name + "', invalid node in path: " + node);

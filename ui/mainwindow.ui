@@ -2723,6 +2723,8 @@ then colour which other nodes in the graph are likely to be contiguous
      <string>Tools</string>
     </property>
     <addaction name="actionSettings"/>
+    <addaction name="separator"/>
+    <addaction name="menuPathfinder"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -2801,6 +2803,12 @@ then colour which other nodes in the graph are likely to be contiguous
     <addaction name="actionChange_node_depth"/>
     <addaction name="separator"/>
     <addaction name="actionRotate_nodes"/>
+   </widget>
+   <widget class="QMenu" name="menuPathfinder">
+    <property name="title">
+     <string>Pathfinder</string>
+    </property>
+    <addaction name="actionPathfinder_TTT"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuManipulate"/>
@@ -3180,6 +3188,11 @@ then colour which other nodes in the graph are likely to be contiguous
    </property>
    <property name="shortcut">
     <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionPathfinder_TTT">
+   <property name="text">
+    <string>TTT</string>
    </property>
   </action>
   <action name="actionSelect_nodes_with_dead_ends">

@@ -214,6 +214,15 @@ public:
     //running a BLAST search.
     QString blastSearchParameters;
 
+    // TTT (Tangle Termination Tool) persisted settings
+    QString tttGafPath;
+    QString tttCoveragePath;
+    int tttQualityThreshold = 20;
+    int tttMipTimeLimit = 7200;
+    int tttNumInitialPaths = 10;
+    int tttMaxIterations = 100000;
+    int tttOutputMode = 0;  // 0=All, 1=Merged, 2=Per-path
+
     //These are the optional BLAST hit filters: whether they are used and
     //what their values are.
     IntSetting blastAlignmentLengthFilter;

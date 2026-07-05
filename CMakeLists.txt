@@ -68,6 +68,7 @@ set(LIB_SOURCES
     ui/dialogs/walklistdialog.cpp
     ui/graphicsviewzoom.cpp
     ui/dialogs/graphinfodialog.cpp
+    ui/dialogs/tttdialog.cpp
     ui/widgets/infotextwidget.cpp
     ui/mainwindow.cpp
     ui/bandagegraphicsscene.cpp
@@ -97,6 +98,7 @@ set(FORMS
     ui/dialogs/changenodenamedialog.ui
     ui/dialogs/enteronequerydialog.ui
     ui/dialogs/graphinfodialog.ui
+    ui/dialogs/tttdialog.ui
     ui/mainwindow.ui
     ui/dialogs/myprogressdialog.ui
     ui/dialogs/pathspecifydialog.ui
@@ -200,6 +202,24 @@ if (APPLE)
   set_source_files_properties(images/application.icns PROPERTIES
         MACOSX_PACKAGE_LOCATION "Resources")
 endif()
+
+# Copy TTT binary, solver, and conversion script to build directory
+if(WIN32)
+    set(TTT_BINARY_NAME "ttt.exe")
+    set(GLPSOL_BINARY_NAME "glpsol.exe")
+else()
+    set(TTT_BINARY_NAME "ttt")
+    set(GLPSOL_BINARY_NAME "glpsol")
+endif()
+add_custom_command(TARGET BandageProPP POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BandageProPP>/../thirdparty/TTT"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/TTT/${TTT_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:BandageProPP>/../thirdparty/TTT/${TTT_BINARY_NAME}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/TTT/${GLPSOL_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:BandageProPP>/../thirdparty/TTT/${GLPSOL_BINARY_NAME}"
+)
 
 add_subdirectory(resources)
 install(TARGETS BandageProPP

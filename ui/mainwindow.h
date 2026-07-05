@@ -204,6 +204,7 @@ private slots:
     void changeNodeDepth();
     void openGraphInfoDialog();
     void exportGraphLayout();
+    void openTTTDialog();
     void showContextMenu(QPoint pos);
 
 protected:

@@ -1,0 +1,10 @@
+#!/bin/bash
+# TTT wrapper — runs TTT.py with the TTT conda environment
+# Replaces the PyInstaller-bundled binary to avoid CBC permission issues.
+CONDA_BASE="/opt/software/miniforge"
+TTT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+source "${CONDA_BASE}/etc/profile.d/conda.sh"
+conda activate TTT
+
+exec python3 "${TTT_DIR}/TTT.py" "$@"

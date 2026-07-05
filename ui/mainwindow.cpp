@@ -31,6 +31,7 @@
 #include "ui/dialogs/changenodenamedialog.h"
 #include "ui/dialogs/changenodedepthdialog.h"
 #include "ui/dialogs/graphinfodialog.h"
+#include "ui/dialogs/tttdialog.h"
 #include "ui/dialogs/pathlistdialog.h"
 #include "ui/dialogs/walklistdialog.h"
 
@@ -464,6 +465,7 @@ MainWindow::MainWindow(QString fileToLoadOnStartup, bool drawGraphAfterLoad) :
     connect(ui->actionChange_node_name, SIGNAL(triggered(bool)), this, SLOT(changeNodeName()));
     connect(ui->actionChange_node_depth, SIGNAL(triggered(bool)), this, SLOT(changeNodeDepth()));
     connect(ui->actionRotate_nodes, SIGNAL(triggered(bool)), this, SLOT(rotateSelectedNodes()));
+    connect(ui->actionPathfinder_TTT, SIGNAL(triggered()), this, SLOT(openTTTDialog()));
     connect(ui->moreInfoButton, SIGNAL(clicked(bool)), this, SLOT(openGraphInfoDialog()));
 
     QAction *undoAction = g_undoStack->createUndoAction(this, tr("&Undo"));
@@ -3291,6 +3293,17 @@ void MainWindow::openGraphInfoDialog()
 {
     GraphInfoDialog graphInfoDialog(this);
     graphInfoDialog.exec();
+}
+
+void MainWindow::openTTTDialog()
+{
+    auto *dialog = new TTTDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &QDialog::accepted, this, [this, dialog]() {
+        if (!dialog->outputGfaPath().isEmpty())
+            loadGraph(dialog->outputGfaPath());
+    });
+    dialog->show();
 }
 
 void MainWindow::exportGraphLayout() {

@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TTTDialog</class>
+ <widget class="QDialog" name="TTTDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>650</width>
+    <height>750</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Pathfinder - TTT (Tangle Termination Tool)</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <widget class="QGroupBox" name="inputFilesGroupBox">
+     <property name="title">
+      <string>Input Files</string>
+     </property>
+     <layout class="QGridLayout" name="inputFilesGridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="gafLabel">
+        <property name="text">
+         <string>GAF Alignment:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="gafPathEdit"/>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="browseGafButton">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="coverageLabel">
+        <property name="text">
+         <string>Coverage:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="coveragePathEdit"/>
+      </item>
+      <item row="1" column="2">
+       <widget class="QPushButton" name="browseCoverageButton">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="boundaryGroupBox">
+     <property name="title">
+      <string>Boundary Nodes</string>
+     </property>
+     <layout class="QVBoxLayout" name="boundaryVLayout">
+      <item>
+       <layout class="QHBoxLayout" name="boundaryButtonLayout">
+        <item>
+         <widget class="QPushButton" name="selectBoundaryButton">
+          <property name="text">
+           <string>Select Pairs from Graph (Ctrl+Click)</string>
+          </property>
+          <property name="toolTip">
+           <string>Hold Ctrl and click nodes in pairs: entry1, exit1, entry2, exit2, ...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="clearBoundaryButton">
+          <property name="text">
+           <string>Clear Pairs</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="boundarySpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QPlainTextEdit" name="boundaryPairsEdit">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="maximumBlockCount">
+         <number>20</number>
+        </property>
+        <property name="placeholderText">
+         <string>Click "Select Pairs from Graph" and Ctrl+Click nodes in pairs (entry → exit).
+E.g.: nodeA   nodeB
+       nodeC   nodeD
+
+Or use the Browse button to load a TSV file.</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="browseBoundaryButton">
+        <property name="text">
+         <string>Browse TSV File...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="parametersGroupBox">
+     <property name="title">
+      <string>Parameters</string>
+     </property>
+     <layout class="QGridLayout" name="parametersGridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="qualityLabel">
+        <property name="text">
+         <string>Quality Threshold:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="qualityThresholdSpinBox">
+        <property name="minimum">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>20</number>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="mipLabel">
+        <property name="text">
+         <string>MIP Time Limit (s):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QSpinBox" name="mipTimeLimitSpinBox">
+        <property name="minimum">
+         <number>60</number>
+        </property>
+        <property name="maximum">
+         <number>86400</number>
+        </property>
+        <property name="value">
+         <number>7200</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="initialPathsLabel">
+        <property name="text">
+         <string>Initial Paths:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="initialPathsSpinBox">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="maxIterLabel">
+        <property name="text">
+         <string>Max Iterations:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QSpinBox" name="maxIterSpinBox">
+        <property name="minimum">
+         <number>1000</number>
+        </property>
+        <property name="maximum">
+         <number>1000000</number>
+        </property>
+        <property name="singleStep">
+         <number>10000</number>
+        </property>
+        <property name="value">
+         <number>100000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="outputModeLabel">
+        <property name="text">
+         <string>Output Mode:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1" colspan="3">
+       <widget class="QComboBox" name="outputModeComboBox">
+        <item>
+         <property name="text">
+          <string>All (merged + per-path + concatenated)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Merged (single GFA with P-lines)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Per-path (one GFA per traversal)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Concatenated (all paths in one file, separate components)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="outputGroupBox">
+     <property name="title">
+      <string>Output</string>
+     </property>
+     <layout class="QHBoxLayout" name="outputLayout">
+      <item>
+       <widget class="QLineEdit" name="outputDirEdit">
+        <property name="placeholderText">
+         <string>Auto-generated temp directory</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="browseOutputButton">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="logTextEdit">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="placeholderText">
+      <string>TTT output will appear here...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <item>
+      <spacer name="buttonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="runButton">
+       <property name="text">
+        <string>Run TTT</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cancelButton">
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>gafPathEdit</tabstop>
+  <tabstop>coveragePathEdit</tabstop>
+  <tabstop>boundaryPairsEdit</tabstop>
+  <tabstop>qualityThresholdSpinBox</tabstop>
+  <tabstop>mipTimeLimitSpinBox</tabstop>
+  <tabstop>initialPathsSpinBox</tabstop>
+  <tabstop>maxIterSpinBox</tabstop>
+  <tabstop>outputDirEdit</tabstop>
+  <tabstop>logTextEdit</tabstop>
+  <tabstop>runButton</tabstop>
+  <tabstop>cancelButton</tabstop>
+ </tabstops>
+ <resources/>
+</ui>
