@@ -23,6 +23,10 @@ if(APPLE)
             endif()
         endif()
     endforeach()
+    # Also strip AGL from link flags that CMake adds automatically
+    string(REPLACE "-framework AGL" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REPLACE "-framework AGL" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+    string(REPLACE "-framework AGL" "" CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS}")
 endif()
 
 set(LIB_SOURCES

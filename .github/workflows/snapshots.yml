@@ -171,7 +171,11 @@ jobs:
         working-directory: thirdparty/TTT
         run: |
           pip install -r requirements.txt pyinstaller
-          cp "/c/Program Files (x86)/GnuWin32/bin/glpsol.exe" . 2>/dev/null || cp "/c/Program Files/GnuWin32/bin/glpsol.exe" . 2>/dev/null || true
+          # Find glpsol.exe from chocolatey install
+          cp "/c/ProgramData/chocolatey/lib/glpk/tools/winglpk-5.00/w64/glpsol.exe" . 2>/dev/null || \
+          cp "/c/ProgramData/chocolatey/bin/glpsol.exe" . 2>/dev/null || \
+          which glpsol && cp "$(which glpsol)" . || \
+          (echo "ERROR: glpsol.exe not found" && exit 1)
           pyinstaller --onefile --name ttt --add-data "glpsol.exe;." TTT.py
           cp dist/ttt.exe ttt.exe
 
