@@ -162,11 +162,14 @@ jobs:
           cache-key-prefix: ${{ runner.os }}-QtCache
           version: ${{env.QT_VERSION}}
 
+      - name: '⚙️ Install GLPK'
+        shell: bash
+        run: choco install glpk -y
+
       - name: '⚙️ Build TTT standalone binary'
         shell: bash
+        working-directory: thirdparty/TTT
         run: |
-          choco install glpk -y
-          cd ${{github.workspace}}/thirdparty/TTT
           pip install -r requirements.txt pyinstaller
           cp "/c/Program Files (x86)/GnuWin32/bin/glpsol.exe" . 2>/dev/null || cp "/c/Program Files/GnuWin32/bin/glpsol.exe" . 2>/dev/null || true
           pyinstaller --onefile --name ttt --add-data "glpsol.exe;." TTT.py

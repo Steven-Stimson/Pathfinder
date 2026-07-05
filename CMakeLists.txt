@@ -12,20 +12,17 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Svg Test Concurrent Network)
 # Qt 6.7.x links the deprecated AGL framework on macOS, which was removed in
 # Xcode 26 / macOS 26 SDK. Strip it from the OpenGL target if present.
 if(APPLE)
-    if(TARGET OpenGL::GL)
-        get_target_property(_gl_libs OpenGL::GL INTERFACE_LINK_LIBRARIES)
-        if(_gl_libs)
-            list(FILTER _gl_libs EXCLUDE REGEX "[Aa][Gg][Ll]")
-            set_target_properties(OpenGL::GL PROPERTIES INTERFACE_LINK_LIBRARIES "${_gl_libs}")
+    # Strip the deprecated AGL framework from all Qt/OpenGL targets.
+    # macOS 26 / Xcode 26 removed AGL, so linking against it fails.
+    foreach(_agl_target OpenGL::GL Qt6::Gui Qt6::Widgets Qt6::Svg)
+        if(TARGET ${_agl_target})
+            get_target_property(_agl_libs ${_agl_target} INTERFACE_LINK_LIBRARIES)
+            if(_agl_libs)
+                list(FILTER _agl_libs EXCLUDE REGEX "[Aa][Gg][Ll]")
+                set_target_properties(${_agl_target} PROPERTIES INTERFACE_LINK_LIBRARIES "${_agl_libs}")
+            endif()
         endif()
-    endif()
-    if(TARGET Qt6::Gui)
-        get_target_property(_qt6_gui_libs Qt6::Gui INTERFACE_LINK_LIBRARIES)
-        if(_qt6_gui_libs)
-            list(FILTER _qt6_gui_libs EXCLUDE REGEX "[Aa][Gg][Ll]")
-            set_target_properties(Qt6::Gui PROPERTIES INTERFACE_LINK_LIBRARIES "${_qt6_gui_libs}")
-        endif()
-    endif()
+    endforeach()
 endif()
 
 set(LIB_SOURCES
