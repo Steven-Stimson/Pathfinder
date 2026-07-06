@@ -233,10 +233,14 @@ jobs:
         run: ls -alFR
       - name: '📦 Re-zip Windows artifact'
         run: |
-          cd BandageProPP-win-*
-          7z a ../BandageProPP-win.zip .
-          cd ..
-          mv BandageProPP-win.zip BandageProPP-win-$(ls -d BandageProPP-win-* | head -1 | sed 's/BandageProPP-win-//').zip
+          ls -la
+          WIN_DIR=$(ls -d BandageProPP-win-* 2>/dev/null | head -1)
+          if [ -d "$WIN_DIR" ]; then
+            cd "$WIN_DIR"
+            7z a ../BandageProPP-win.zip .
+            cd ..
+          fi
+          ls -la *.zip 2>/dev/null || echo "No zip files found"
 
       - name: '🚀 Create release and upload artifacts'
         env:
@@ -246,4 +250,4 @@ jobs:
             chmod +x pyuploadtool-x86_64.AppImage
             ./pyuploadtool-x86_64.AppImage **/BandageProPP-Linux-*.AppImage
             ./pyuploadtool-x86_64.AppImage **/BandageProPP-macOS-*.dmg
-            ./pyuploadtool-x86_64.AppImage **/BandageProPP-win-*.zip
+            ./pyuploadtool-x86_64.AppImage **/BandageProPP-win.zip
