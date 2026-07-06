@@ -23,9 +23,6 @@ if(APPLE)
             endif()
         endif()
     endforeach()
-    # Also add weak framework flag for AGL to prevent link failure
-    # when AGL is added automatically by CMake's link step
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-weak_framework,AGL")
 endif()
 
 set(LIB_SOURCES
@@ -184,6 +181,11 @@ target_link_libraries(BandageCLI PRIVATE BandageLib CLI11::CLI11 Qt6::Core Qt6::
 add_executable(BandageProPP program/main.cpp ${RESOURCES})
 target_link_libraries(BandageProPP BandageCLI BandageLib CLI11::CLI11 Qt6::Core Qt6::Widgets Qt6::Concurrent ${bandage_zlib})
 set_target_properties(BandageProPP PROPERTIES OUTPUT_NAME "BandagePro++")
+
+# On macOS, make AGL a weak framework to prevent link failure when it's missing (Xcode 26+)
+if(APPLE)
+    target_link_options(BandageProPP PRIVATE "LINKER:-weak_framework,AGL")
+endif()
 
 # Build as a Windows GUI application (no console window on startup).
 # Qt provides a WinMain wrapper that calls our main(). CLI mode still works,
