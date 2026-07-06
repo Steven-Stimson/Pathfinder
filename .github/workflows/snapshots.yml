@@ -231,6 +231,13 @@ jobs:
         uses: actions/download-artifact@v4
       - name: '🗂 Inspect directory after downloading artifacts'
         run: ls -alFR
+      - name: '📦 Re-zip Windows artifact'
+        run: |
+          cd BandageProPP-win-*
+          7z a ../BandageProPP-win.zip .
+          cd ..
+          mv BandageProPP-win.zip BandageProPP-win-$(ls -d BandageProPP-win-* | head -1 | sed 's/BandageProPP-win-//').zip
+
       - name: '🚀 Create release and upload artifacts'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
