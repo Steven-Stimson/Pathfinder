@@ -1,7 +1,7 @@
 [Desktop Entry]
 Categories=Utility;Biology;
 Icon=icon480
-Name=BandagePro++
+Name=Pathfinder
 Type=Application
-Exec=BandagePro++
+Exec=Pathfinder
 Comment=Assembly graph viewer
