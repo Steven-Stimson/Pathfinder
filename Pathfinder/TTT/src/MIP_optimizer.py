@@ -112,14 +112,26 @@ class MIPOptimizer:
             # MIP magic
             pulp.LpSolverDefault.msg = 1
             # by default no more than 1 hour
-            # When running as PyInstaller bundle, pass the glpsol path explicitly
+            # Use GLPK if available (with explicit path for PyInstaller bundles),
+            # otherwise fall back to CBC (built into pulp, no external binary needed)
             glpk_kwargs = {"timeLimit": self.time_limit}
+            use_glpk = True
             if hasattr(sys, '_MEIPASS'):
                 glpsol_name = 'glpsol.exe' if sys.platform == 'win32' else 'glpsol'
                 glpsol_path = os.path.join(sys._MEIPASS, glpsol_name)
                 if os.path.exists(glpsol_path):
                     glpk_kwargs["path"] = glpsol_path
-            prob.solve(pulp.GLPK(**glpk_kwargs))
+                else:
+                    use_glpk = False
+                    logging.info("glpsol not found in bundle, falling back to CBC solver")
+            if use_glpk:
+                try:
+                    prob.solve(pulp.GLPK(**glpk_kwargs))
+                except Exception:
+                    logging.warning("GLPK solver failed, falling back to CBC solver")
+                    prob.solve(pulp.PULP_CBC_CMD(timeLimit=self.time_limit, msg=0))
+            else:
+                prob.solve(pulp.PULP_CBC_CMD(timeLimit=self.time_limit, msg=0))
             
             result = {}    
             
