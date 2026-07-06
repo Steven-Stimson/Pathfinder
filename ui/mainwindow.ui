@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>BandagePro++</string>
+   <string>Pathfinder</string>
   </property>
   <property name="windowIcon">
    <iconset resource="../images/images.qrc">
@@ -1055,7 +1055,7 @@ When in double mode, you can include '+' or '-' at the end of the node name to s
                  </size>
                 </property>
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This is the average width for each node. The exact width for each node is also influenced by the node's depth. The effect of depth on width can be adjusted in Bandage %SETTINGS%.  &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This is the average width for each node. The exact width for each node is also influenced by the node's depth. The effect of depth on width can be adjusted in Pathfinder %SETTINGS%.  &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>
@@ -1074,7 +1074,7 @@ When in double mode, you can include '+' or '-' at the end of the node name to s
                  </size>
                 </property>
                 <property name="toolTip">
-                 <string>Select one or more nodes and then click this button. Bandage will
+                 <string>Select one or more nodes and then click this button. Pathfinder will
 then colour which other nodes in the graph are likely to be contiguous
                                         with your selected node(s).</string>
                 </property>
@@ -1095,7 +1095,7 @@ then colour which other nodes in the graph are likely to be contiguous
                  </size>
                 </property>
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This value controls how large the graph appears in Bandage. The zoom level can also be changed by:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Holding the %CONTROL% key and using the mouse wheel over the graph. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Clicking on the graph display and then using the '+' and '-' keys.  &lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This value controls how large the graph appears in Pathfinder. The zoom level can also be changed by:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Holding the %CONTROL% key and using the mouse wheel over the graph. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Clicking on the graph display and then using the '+' and '-' keys.  &lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>
@@ -1114,7 +1114,7 @@ then colour which other nodes in the graph are likely to be contiguous
                  </size>
                 </property>
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This controls the colour of the nodes in the graph:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Random colours': Nodes will be coloured randomly. Each time this is selected, new random colours will be chosen. Negative nodes (visible in 'Double' mode) will be a darker shade of their complement positive nodes. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Uniform colour': For graphs drawn with the 'Entire graph' scope, all nodes will be the same colour. For graphs drawn with the 'Around nodes' scope, your specified nodes will be drawn in a separate colour. For graphs drawn with the 'Around BLAST hits' scope, nodes with BLAST hits will be drawn in a separate colour. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Colour by depth': Node colours will be defined by their depth. The details of this relationship are configurable in Bandage %SETTINGS%. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'BLAST hits (rainbow)': Nodes will be drawn in a light grey colour and BLAST hits for the currently selected query will be drawn using a rainbow. Red indicates the start of the query sequence and violet indicates the end. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'BLAST hits (solid)': Nodes will be drawn in a light grey colour and BLAST hits for the currently selected query will be drawn using the query's colour. Query colours can be specified in the 'Create/view BLAST search' window. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Colour by contiguity': This option will display a 'Determine contiguity button. When pressed, the nodes will be coloured based on their contiguity with the selected node(s). &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Custom colours': Nodes will be coloured using colours of your choice. Select one or more nodes and then click the 'Set colour' button to define their colour.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;See the 'Colours' section of the Bandage %SETTINGS% to control various colouring options.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This controls the colour of the nodes in the graph:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Random colours': Nodes will be coloured randomly. Each time this is selected, new random colours will be chosen. Negative nodes (visible in 'Double' mode) will be a darker shade of their complement positive nodes. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Uniform colour': For graphs drawn with the 'Entire graph' scope, all nodes will be the same colour. For graphs drawn with the 'Around nodes' scope, your specified nodes will be drawn in a separate colour. For graphs drawn with the 'Around BLAST hits' scope, nodes with BLAST hits will be drawn in a separate colour. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Colour by depth': Node colours will be defined by their depth. The details of this relationship are configurable in Pathfinder %SETTINGS%. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'BLAST hits (rainbow)': Nodes will be drawn in a light grey colour and BLAST hits for the currently selected query will be drawn using a rainbow. Red indicates the start of the query sequence and violet indicates the end. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'BLAST hits (solid)': Nodes will be drawn in a light grey colour and BLAST hits for the currently selected query will be drawn using the query's colour. Query colours can be specified in the 'Create/view BLAST search' window. &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Colour by contiguity': This option will display a 'Determine contiguity button. When pressed, the nodes will be coloured based on their contiguity with the selected node(s). &lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;'Custom colours': Nodes will be coloured using colours of your choice. Select one or more nodes and then click the 'Set colour' button to define their colour.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;See the 'Colours' section of the Pathfinder %SETTINGS% to control various colouring options.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>
@@ -1294,7 +1294,7 @@ then colour which other nodes in the graph are likely to be contiguous
                  </size>
                 </property>
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click the 'Font' button to choose the font used for node labels. The colour of the font is configurable in Bandage's %SETTINGS%.&lt;br/&gt;&lt;br/&gt;Ticking 'Text outline' will surround the text with a white outline. This can help to make text more readable, but will obscure more of the underlying graph. The thickness of the text outline is configurable in Bandage's %SETTINGS%.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click the 'Font' button to choose the font used for node labels. The colour of the font is configurable in Pathfinder's %SETTINGS%.&lt;br/&gt;&lt;br/&gt;Ticking 'Text outline' will surround the text with a white outline. This can help to make text more readable, but will obscure more of the underlying graph. The thickness of the text outline is configurable in Pathfinder's %SETTINGS%.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>
@@ -2777,7 +2777,7 @@ then colour which other nodes in the graph are likely to be contiguous
      <string>Help</string>
     </property>
     <addaction name="actionAbout"/>
-    <addaction name="actionBandage_online_help"/>
+    <addaction name="actionPathfinder_online_help"/>
    </widget>
    <widget class="QMenu" name="menuOutput">
     <property name="title">
@@ -3041,16 +3041,16 @@ then colour which other nodes in the graph are likely to be contiguous
     <string>Select not contiguous nodes</string>
    </property>
   </action>
-  <action name="actionBandage_online_help">
+  <action name="actionPathfinder_online_help">
    <property name="icon">
     <iconset resource="../images/images.qrc">
      <normaloff>:/icons/icon.png</normaloff>:/icons/icon.png</iconset>
    </property>
    <property name="text">
-    <string>BandagePro++ online help</string>
+    <string>Pathfinder online help</string>
    </property>
    <property name="toolTip">
-    <string>BandagePro++ online help</string>
+    <string>Pathfinder online help</string>
    </property>
   </action>
   <action name="actionCopy_selected_node_path_to_clipboard">

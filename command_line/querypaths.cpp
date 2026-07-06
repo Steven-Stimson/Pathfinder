@@ -1,19 +1,19 @@
 // Copyright 2023 Anton Korobeynikov
 
-// This file is part of BandagePro++
+// This file is part of Pathfinder
 
-// BandagePro++ is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// BandagePro++ is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "querypaths.h"
 #include "commoncommandlinefunctions.h"
@@ -31,7 +31,7 @@
 CLI::App *addQueryPathsSubcommand(CLI::App &app,
                                   QueryPathsCmd &cmd) {
     auto *qp = app.add_subcommand("querypaths", "Output graph paths for BLAST queries");
-    qp->add_option("<graph>", cmd.m_graph, "A graph file of any type supported by Bandage")
+    qp->add_option("<graph>", cmd.m_graph, "A graph file of any type supported by Pathfinder")
             ->required()->check(CLI::ExistingFile);
     qp->add_option("<queries>", cmd.m_queries, "A FASTA file of one or more BLAST queries")
             ->required()->check(CLI::ExistingFile);
@@ -41,7 +41,7 @@ CLI::App *addQueryPathsSubcommand(CLI::App &app,
     qp->add_flag("--hitsfasta", cmd.m_hitsFasta, "Produce a multi-FASTA file of all BLAST hits in the query paths");
     qp->add_flag("--gfapaths", cmd.m_gfaPaths, "Align to GFA path sequences in addition to nodes");
 
-    qp->footer("Bandage querypaths searches for queries in the graph using BLAST and outputs the results to a tab-delimited file.");
+    qp->footer("Pathfinder querypaths searches for queries in the graph using BLAST and outputs the results to a tab-delimited file.");
 
     return qp;
 
@@ -58,7 +58,7 @@ int handleQueryPathsCmd(QApplication *app,
     // Ensure that the --query option isn't used, as that would overwrite the
     // queries file that is a positional argument.
     if (cli.count("--query")) {
-        err << "BandagePro++ error: the --query option cannot be used with Bandage querypaths." << Qt::endl;
+        err << "Pathfinder error: the --query option cannot be used with Pathfinder querypaths." << Qt::endl;
         return 1;
     }
 
@@ -72,15 +72,15 @@ int handleQueryPathsCmd(QApplication *app,
     QFile pathsFile(pathFastaFilename);
     QFile hitsFile(hitsFastaFilename);
     if (tableFile.exists()) {
-        outputText("BandagePro++ error: " + tableFilename + " already exists.", &err);
+        outputText("Pathfinder error: " + tableFilename + " already exists.", &err);
         return 1;
     }
     if (cmd.m_pathFasta && pathsFile.exists()) {
-        outputText("BandagePro++ error: " + pathFastaFilename + " already exists.", &err);
+        outputText("Pathfinder error: " + pathFastaFilename + " already exists.", &err);
         return 1;
     }
     if (cmd.m_hitsFasta && hitsFile.exists()) {
-        outputText("BandagePro++ error: " + hitsFastaFilename + " already exists.", &err);
+        outputText("Pathfinder error: " + hitsFastaFilename + " already exists.", &err);
         return 1;
     }
 
@@ -94,7 +94,7 @@ int handleQueryPathsCmd(QApplication *app,
 
     QString inputFile = QString::fromStdString(cmd.m_graph.generic_string());
     if (!g_assemblyGraph->loadGraphFromFile(inputFile)) {
-        err << "BandagePro++ error: could not load " << inputFile << Qt::endl;
+        err << "Pathfinder error: could not load " << inputFile << Qt::endl;
         return 1;
     }
 

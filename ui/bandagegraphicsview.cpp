@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "bandagegraphicsview.h"
@@ -32,7 +32,7 @@
 #include <cmath>
 #include <QUndoStack>
 
-BandageGraphicsView::BandageGraphicsView(QObject * /*parent*/) :
+PathfinderGraphicsView::PathfinderGraphicsView(QObject * /*parent*/) :
     QGraphicsView(), m_rotation(0.0)
 {
     setDragMode(QGraphicsView::RubberBandDrag);
@@ -43,7 +43,7 @@ BandageGraphicsView::BandageGraphicsView(QObject * /*parent*/) :
 
 
 
-void BandageGraphicsView::mousePressEvent(QMouseEvent * event)
+void PathfinderGraphicsView::mousePressEvent(QMouseEvent * event)
 {
     // Ctrl key or Middle button = scroll hand drag
     if (event->modifiers() == Qt::CTRL || event->button() == Qt::MiddleButton) {
@@ -98,7 +98,7 @@ void BandageGraphicsView::mousePressEvent(QMouseEvent * event)
     QGraphicsView::mousePressEvent(event);
 }
 
-void BandageGraphicsView::mouseReleaseEvent(QMouseEvent * event)
+void PathfinderGraphicsView::mouseReleaseEvent(QMouseEvent * event)
 {
     // For middle button: reset drag mode, but also send the release event
     // so QGraphicsView can finalize the scroll.
@@ -121,7 +121,7 @@ void BandageGraphicsView::mouseReleaseEvent(QMouseEvent * event)
     g_settings->nodeDragging = NEARBY_PIECES;
 }
 
-void BandageGraphicsView::mouseMoveEvent(QMouseEvent * event)
+void PathfinderGraphicsView::mouseMoveEvent(QMouseEvent * event)
 {
     // Middle-button drag = pan (same as Ctrl+Left drag)
     if (event->buttons() & Qt::MiddleButton) {
@@ -153,7 +153,7 @@ void BandageGraphicsView::mouseMoveEvent(QMouseEvent * event)
             angle = -angle;
 
         // Apply rotation to all selected nodes
-        auto *bgScene = dynamic_cast<BandageGraphicsScene *>(scene());
+        auto *bgScene = dynamic_cast<PathfinderGraphicsScene *>(scene());
         if (bgScene) {
             std::vector<GraphicsItemNode *> selectedNodes = bgScene->getSelectedGraphicsItemNodes();
             for (auto *node : selectedNodes) {
@@ -191,7 +191,7 @@ void BandageGraphicsView::mouseMoveEvent(QMouseEvent * event)
 }
 
 
-void BandageGraphicsView::mouseDoubleClickEvent(QMouseEvent * event)
+void PathfinderGraphicsView::mouseDoubleClickEvent(QMouseEvent * event)
 {
     //Find the node beneath the cursor.
     QGraphicsItem * item = itemAt(event->pos());
@@ -204,7 +204,7 @@ void BandageGraphicsView::mouseDoubleClickEvent(QMouseEvent * event)
 
 
 
-void BandageGraphicsView::keyPressEvent(QKeyEvent * event)
+void PathfinderGraphicsView::keyPressEvent(QKeyEvent * event)
 {
     QGraphicsView::keyPressEvent(event);
     g_undoStack->setActive(false);
@@ -216,7 +216,7 @@ void BandageGraphicsView::keyPressEvent(QKeyEvent * event)
 }
 
 
-void BandageGraphicsView::setAntialiasing(bool antialiasingOn)
+void PathfinderGraphicsView::setAntialiasing(bool antialiasingOn)
 {
     if (antialiasingOn)
         setRenderHint(QPainter::Antialiasing, true);
@@ -225,18 +225,18 @@ void BandageGraphicsView::setAntialiasing(bool antialiasingOn)
 }
 
 
-void BandageGraphicsView::setRotation(double newRotation)
+void PathfinderGraphicsView::setRotation(double newRotation)
 {
     rotate(newRotation - m_rotation);
     m_rotation = newRotation;
 }
 
-void BandageGraphicsView::changeRotation(double rotationChange)
+void PathfinderGraphicsView::changeRotation(double rotationChange)
 {
     m_rotation += rotationChange;
 }
 
-void BandageGraphicsView::undoRotation()
+void PathfinderGraphicsView::undoRotation()
 {
     rotate(-m_rotation);
     m_rotation = 0.0;
@@ -245,7 +245,7 @@ void BandageGraphicsView::undoRotation()
 
 
 // This function will return true if a point is visible in the viewport.
-bool BandageGraphicsView::isPointVisible(QPointF p)
+bool PathfinderGraphicsView::isPointVisible(QPointF p)
 {
     QPointF corner1, corner2, corner3, corner4;
     getFourViewportCornersInSceneCoordinates(&corner1, &corner2, &corner3, &corner4);
@@ -263,7 +263,7 @@ bool BandageGraphicsView::isPointVisible(QPointF p)
 
 //This function should be used when a line segment might be entirely visible,
 //entirely invisible or partially visible.
-QPointF BandageGraphicsView::findIntersectionWithViewportBoundary(QLineF line)
+QPointF PathfinderGraphicsView::findIntersectionWithViewportBoundary(QLineF line)
 {
     QPointF corner1, corner2, corner3, corner4;
     getFourViewportCornersInSceneCoordinates(&corner1, &corner2, &corner3, &corner4);
@@ -294,7 +294,7 @@ QPointF BandageGraphicsView::findIntersectionWithViewportBoundary(QLineF line)
 // invisible, but part of the line is visible).  It will return the visible
 // part of the line.  If the line is entirely invisible, it returns an empty
 // QLineF and success becomes false.
-QLineF BandageGraphicsView::findVisiblePartOfLine(QLineF line, bool * success)
+QLineF PathfinderGraphicsView::findVisiblePartOfLine(QLineF line, bool * success)
 {
     bool p1visible = isPointVisible(line.p1());
     bool p2visible = isPointVisible(line.p2());
@@ -354,7 +354,7 @@ QLineF BandageGraphicsView::findVisiblePartOfLine(QLineF line, bool * success)
 
 // This function gets the four corners of the viewport in scene coordinates.
 // The corners are in order: top-left, top-right, bottom-right, bottom-left.
-void BandageGraphicsView::getFourViewportCornersInSceneCoordinates(QPointF * c1, QPointF * c2, QPointF * c3, QPointF * c4)
+void PathfinderGraphicsView::getFourViewportCornersInSceneCoordinates(QPointF * c1, QPointF * c2, QPointF * c3, QPointF * c4)
 {
     QPointF p1 = mapToScene(0, 0);
     QPointF p2 = mapToScene(viewport()->width(), 0);
@@ -373,14 +373,14 @@ void BandageGraphicsView::getFourViewportCornersInSceneCoordinates(QPointF * c1,
     *c4 = bottomLeft;
 }
 
-double BandageGraphicsView::distance(double x1, double y1, double x2, double y2)
+double PathfinderGraphicsView::distance(double x1, double y1, double x2, double y2)
 {
     double xDiff = x1 - x2;
     double yDiff = y1 - y2;
     return sqrt(xDiff * xDiff + yDiff * yDiff);
 }
 
-double BandageGraphicsView::angleBetweenTwoLines(QPointF line1Start, QPointF line1End, QPointF line2Start, QPointF line2End)
+double PathfinderGraphicsView::angleBetweenTwoLines(QPointF line1Start, QPointF line1End, QPointF line2Start, QPointF line2End)
 {
     double line1XDiff = line1End.x() - line1Start.x();
     double line1YDiff = line1End.y() - line1Start.y();
@@ -403,12 +403,12 @@ double BandageGraphicsView::angleBetweenTwoLines(QPointF line1Start, QPointF lin
     return acos(cosine);
 }
 
-bool BandageGraphicsView::differentSidesOfLine(QPointF p1, QPointF p2, QLineF line)
+bool PathfinderGraphicsView::differentSidesOfLine(QPointF p1, QPointF p2, QLineF line)
 {
     return sideOfLine(p1, line) != sideOfLine(p2, line);
 }
 
-bool BandageGraphicsView::differentSidesOfLine(QPointF p1, QPointF p2, QPointF p3, QPointF p4, QLineF line)
+bool PathfinderGraphicsView::differentSidesOfLine(QPointF p1, QPointF p2, QPointF p3, QPointF p4, QLineF line)
 {
     bool side1 = sideOfLine(p1, line);
     bool side2 = sideOfLine(p2, line);
@@ -418,7 +418,7 @@ bool BandageGraphicsView::differentSidesOfLine(QPointF p1, QPointF p2, QPointF p
     return (side1 != side2 || side1 != side3 || side1 != side4);
 }
 
-bool BandageGraphicsView::sideOfLine(QPointF p, QLineF line)
+bool PathfinderGraphicsView::sideOfLine(QPointF p, QLineF line)
 {
     //If the line is almost vertical, just check the X values.
     if (abs(line.dx()) < 0.00000001)

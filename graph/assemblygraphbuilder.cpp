@@ -1,19 +1,19 @@
 // Copyright 2022 Anton Korobeynikov
 
-// This file is part of BandagePro++
+// This file is part of Pathfinder
 
-// BandagePro++ is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// BandagePro++ is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "io.h"
 #include "path.h"
@@ -777,7 +777,7 @@ namespace io {
     class FastaAssemblyGraphBuilder : public AssemblyGraphBuilder {
         using AssemblyGraphBuilder::AssemblyGraphBuilder;
 
-        // This function adjusts a node name to make sure it is valid for use in Bandage.
+        // This function adjusts a node name to make sure it is valid for use in Pathfinder.
         [[nodiscard]] static QString cleanNodeName(QString name) {
             //Replace whitespace with underscores
             name = name.replace(QRegularExpression("\\s"), "_");
@@ -1010,7 +1010,7 @@ namespace io {
         }
     };
 
-// This function builds a graph from an ASQG file.  Bandage expects edges to
+// This function builds a graph from an ASQG file.  Pathfinder expects edges to
 // conform to its expectation: overlaps are only at the ends of sequences and
 // always have the same length in each of the two sequences.  It will not load
 // edges which fail to meet this expectation.  The function's return value is
@@ -1252,7 +1252,7 @@ namespace io {
                 }
             }
 
-            //Even though the Trinity.fasta file only contains positive nodes, Bandage
+            //Even though the Trinity.fasta file only contains positive nodes, Pathfinder
             //expects negative reverse complements nodes, so make them now.
             {
                 std::vector<DeBruijnNode *> nodes;

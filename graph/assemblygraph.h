@@ -2,20 +2,20 @@
 // Copyright 2022 Anton Korobeynikov
 // Copyright 2017 Andrey Zakharov
 
-// This file is part of Bandage
+// This file is part of Pathfinder
 
-// Bandage is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Bandage is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #pragma once
@@ -39,7 +39,7 @@
 class DeBruijnNode;
 class DeBruijnEdge;
 class MyProgressDialog;
-class BandageGraphicsScene;
+class PathfinderGraphicsScene;
 
 class AssemblyGraphError : public std::runtime_error {
   public:
@@ -151,10 +151,10 @@ public:
     int getDrawnNodeCount() const;
     void deleteNodes(const std::vector<DeBruijnNode *> &nodes);
     void deleteEdges(const std::vector<DeBruijnEdge *> &edges);
-    void duplicateNodePair(DeBruijnNode * node, BandageGraphicsScene * scene);
-    bool mergeNodes(QList<DeBruijnNode *> nodes, BandageGraphicsScene * scene);
+    void duplicateNodePair(DeBruijnNode * node, PathfinderGraphicsScene * scene);
+    bool mergeNodes(QList<DeBruijnNode *> nodes, PathfinderGraphicsScene * scene);
 
-    int mergeAllPossible(BandageGraphicsScene * scene = 0,
+    int mergeAllPossible(PathfinderGraphicsScene * scene = 0,
                          MyProgressDialog * progressDialog = 0);
 
     void changeNodeName(const QString& oldName, const QString& newName);

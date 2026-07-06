@@ -500,7 +500,7 @@
          </size>
         </property>
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This step runs necessary database building steps on the graph node sequences, preparing them for further search.&lt;br/&gt;&lt;br/&gt;The database files generated are temporary and will be deleted when Bandage is closed. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This step runs necessary database building steps on the graph node sequences, preparing them for further search.&lt;br/&gt;&lt;br/&gt;The database files generated are temporary and will be deleted when Pathfinder is closed. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>

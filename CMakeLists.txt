@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(BandageProPP LANGUAGES CXX)
+project(PathfinderPP LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -125,7 +125,7 @@ set(PROJECT_VERSION_MINOR "${CMAKE_MATCH_2}")
 set(PROJECT_VERSION_TWEAK "${CMAKE_MATCH_3}")
 set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}${PROJECT_VERSION_TWEAK}")
 
-message(STATUS "Building BandagePro++ version ${PROJECT_VERSION}")
+message(STATUS "Building Pathfinder version ${PROJECT_VERSION}")
 add_compile_definitions(APP_VERSION="${PROJECT_VERSION}")
 
 add_subdirectory(thirdparty)
@@ -153,51 +153,51 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_library(BandageLayout STATIC layout/graphlayoutworker.cpp layout/io.cpp layout/graphlayout.cpp)
-target_link_libraries(BandageLayout PRIVATE OGDF Qt6::Concurrent Qt6::Gui Qt6::Widgets)
+add_library(PathfinderLayout STATIC layout/graphlayoutworker.cpp layout/io.cpp layout/graphlayout.cpp)
+target_link_libraries(PathfinderLayout PRIVATE OGDF Qt6::Concurrent Qt6::Gui Qt6::Widgets)
 
-add_library(BandageIo STATIC
+add_library(PathfinderIo STATIC
         io/gfa.cpp
         io/bedloader.cpp
         io/fileutils.cpp
         io/cigar.cpp
         io/gaf.cpp
         io/filedownloader.cpp)
-target_link_libraries(BandageIo PRIVATE Qt6::Gui Qt6::Widgets Qt6::Network foonathan::lexy)
+target_link_libraries(PathfinderIo PRIVATE Qt6::Gui Qt6::Widgets Qt6::Network foonathan::lexy)
 
 # FIXME: Untagle this
 include_directories(ui)
-add_library(BandageLib STATIC ${LIB_SOURCES} ${FORMS} graphsearch/graphsearchers.cpp)
-target_link_libraries(BandageLib PRIVATE BandageLayout BandageIo llvmSupport Qt6::Concurrent Qt6::Widgets Qt6::Svg Qt6::Network ${bandage_zlib})
-target_include_directories(BandageLib INTERFACE ".")
+add_library(PathfinderLib STATIC ${LIB_SOURCES} ${FORMS} graphsearch/graphsearchers.cpp)
+target_link_libraries(PathfinderLib PRIVATE PathfinderLayout PathfinderIo llvmSupport Qt6::Concurrent Qt6::Widgets Qt6::Svg Qt6::Network ${bandage_zlib})
+target_include_directories(PathfinderLib INTERFACE ".")
 
-target_link_libraries(BandageLib PRIVATE libzstd_static)
+target_link_libraries(PathfinderLib PRIVATE libzstd_static)
 # On windows and macos this is needed
-target_include_directories(BandageLib PRIVATE ${zstd_SOURCE_DIR}/lib)
+target_include_directories(PathfinderLib PRIVATE ${zstd_SOURCE_DIR}/lib)
 
-add_library(BandageCLI STATIC ${CLI_SOURCES})
-target_link_libraries(BandageCLI PRIVATE BandageLib CLI11::CLI11 Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
+add_library(PathfinderCLI STATIC ${CLI_SOURCES})
+target_link_libraries(PathfinderCLI PRIVATE PathfinderLib CLI11::CLI11 Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
 
-add_executable(BandageProPP program/main.cpp ${RESOURCES})
-target_link_libraries(BandageProPP BandageCLI BandageLib CLI11::CLI11 Qt6::Core Qt6::Widgets Qt6::Concurrent ${bandage_zlib})
-set_target_properties(BandageProPP PROPERTIES OUTPUT_NAME "BandagePro++")
+add_executable(PathfinderPP program/main.cpp ${RESOURCES})
+target_link_libraries(PathfinderPP PathfinderCLI PathfinderLib CLI11::CLI11 Qt6::Core Qt6::Widgets Qt6::Concurrent ${bandage_zlib})
+set_target_properties(PathfinderPP PROPERTIES OUTPUT_NAME "Pathfinder")
 
 # On macOS, make AGL a weak framework to prevent link failure when it's missing (Xcode 26+)
 if(APPLE)
-    target_link_options(BandageProPP PRIVATE "LINKER:-weak_framework,AGL")
+    target_link_options(PathfinderPP PRIVATE "LINKER:-weak_framework,AGL")
 endif()
 
 # Build as a Windows GUI application (no console window on startup).
 # Qt provides a WinMain wrapper that calls our main(). CLI mode still works,
 # but stdout/stderr are not attached to a console by default.
 if (WIN32)
-    set_target_properties(BandageProPP PROPERTIES WIN32_EXECUTABLE TRUE)
+    set_target_properties(PathfinderPP PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
 if (APPLE)
-  set_target_properties(BandageProPP PROPERTIES
+  set_target_properties(PathfinderPP PROPERTIES
         MACOSX_BUNDLE ON
-        MACOSX_BUNDLE_BUNDLE_NAME "BandagePro++"
+        MACOSX_BUNDLE_BUNDLE_NAME "Pathfinder"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
         MACOSX_BUNDLE_GUI_IDENTIFIER "org.bandagepropp.app"
         MACOSX_BUNDLE_ICON_FILE "application.icns")
@@ -213,18 +213,18 @@ else()
     set(TTT_BINARY_NAME "ttt")
     set(GLPSOL_BINARY_NAME "glpsol")
 endif()
-add_custom_command(TARGET BandageProPP POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BandageProPP>/../Pathfinder/TTT"
+add_custom_command(TARGET PathfinderPP POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PathfinderPP>/../Pathfinder/TTT"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${TTT_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:BandageProPP>/../Pathfinder/TTT/${TTT_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:PathfinderPP>/../Pathfinder/TTT/${TTT_BINARY_NAME}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:BandageProPP>/../Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:PathfinderPP>/../Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
 )
 
 add_subdirectory(resources)
-install(TARGETS BandageProPP
+install(TARGETS PathfinderPP
         DESTINATION bin
         COMPONENT main)
 

@@ -136,7 +136,7 @@ void TTTDialog::startBoundarySelection()
         return;
     }
 
-    auto *scene = dynamic_cast<BandageGraphicsScene *>(g_graphicsView->scene());
+    auto *scene = dynamic_cast<PathfinderGraphicsScene *>(g_graphicsView->scene());
     if (!scene) return;
 
     auto nodes = scene->getSelectedPositiveNodes();

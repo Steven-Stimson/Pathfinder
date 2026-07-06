@@ -1,20 +1,20 @@
 // Copyright 2017 Ryan Wick
 // Copyright 2022-2023 Anton Korobeynikov
 
-// This file is part of Bandage
+// This file is part of Pathfinder
 
-// Bandage is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Bandage is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "graph/assemblygraph.h"
@@ -62,7 +62,7 @@ using SubCmd = std::variant<std::monostate,
 static SubCmd parseCmdLine(CLI::App &app, int argc, char *argv[]) {
     SubCmd subcmd;
 
-    app.description(getBandageTitleAsciiArt() + '\n' +
+    app.description(getPathfinderTitleAsciiArt() + '\n' +
                     "Version: " + APP_VERSION + '\n');
     app.set_version_flag("--version", APP_VERSION);
     app.set_help_all_flag("--helpall");
@@ -71,31 +71,31 @@ static SubCmd parseCmdLine(CLI::App &app, int argc, char *argv[]) {
 
     addSettings(app);
 
-    // "BandagePro++ load"
+    // "Pathfinder load"
     LoadCmd loadCmd;
     auto *load = addLoadSubcommand(app, loadCmd);
 
-    // "BandagePro++ image"
+    // "Pathfinder image"
     ImageCmd imageCmd;
     auto *image = addImageSubcommand(app, imageCmd);
 
-    // "BandagePro++ info"
+    // "Pathfinder info"
     InfoCmd infoCmd;
     auto *info = addInfoSubcommand(app, infoCmd);
 
-    // "BandagePro++ reduce"
+    // "Pathfinder reduce"
     ReduceCmd reduceCmd;
     auto *reduce = addReduceSubcommand(app, reduceCmd);
 
-    // "BandagePro++ querypaths"
+    // "Pathfinder querypaths"
     QueryPathsCmd qpCmd;
     auto *qp = addQueryPathsSubcommand(app, qpCmd);
 
-    // "BandagePro++ layout"
+    // "Pathfinder layout"
     LayoutCmd laCmd;
     auto *la = addLayoutSubcommand(app, laCmd);
 
-    app.footer("Online Bandage help: https://github.com/asl/BandageProPP/wiki");
+    app.footer("Online Pathfinder help: https://github.com/asl/PathfinderPP/wiki");
 
     app.parse(argc, argv);
 
@@ -122,10 +122,10 @@ static SubCmd parseCmdLine(CLI::App &app, int argc, char *argv[]) {
 }
 
 static void chooseQtPlatform(const CLI::App &app, const SubCmd &cmd) {
-    // Chose default Qt platform. Some ways of running Bandage require the
+    // Chose default Qt platform. Some ways of running Pathfinder require the
     // normal platform while other command line only ways use the minimal
-    // platform. Frustratingly, Bandage image cannot render text properly with
-    // the minimal platform, so we need to use the full platform if Bandage
+    // platform. Frustratingly, Pathfinder image cannot render text properly with
+    // the minimal platform, so we need to use the full platform if Pathfinder
     // image is run with text labels.
     bool imageWithText = false; //std::holds_alternative<ImageCmd>(cmd) &&
     //(app.count("--names") || app.count("--lengths") ||
@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     // Create the important global objects.
     g_blastSearch.reset(new search::BlastSearch());
     g_assemblyGraph.reset(new AssemblyGraph());
-    g_graphicsView = new BandageGraphicsView();
+    g_graphicsView = new PathfinderGraphicsView();
     g_annotationsManager = std::make_shared<AnnotationsManager>();
 
     // Save the terminal width (useful for displaying help text neatly).
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
     if (g_memory->terminalWidth > 300) g_memory->terminalWidth = 300;
 #endif //Q_OS_WIN32
 
-    app->setApplicationName("BandagePro++");
+    app->setApplicationName("Pathfinder");
     app->setApplicationVersion(APP_VERSION);
 
     return std::visit([&](const auto &command) {
@@ -196,10 +196,10 @@ int main(int argc, char *argv[]) {
         } else {
             // Filter our few incompativle options
             if (cli.count("--query")) {
-                std::cerr << "A graph must be given (e.g. via BandagePro++ load) to use the --query option" << std::endl;
+                std::cerr << "A graph must be given (e.g. via Pathfinder load) to use the --query option" << std::endl;
                 return 1;
             } else if (cli.count("--csv")) {
-                std::cerr << "A graph must be given (e.g. via BandagePro++ load) to use the --csv option" << std::endl;
+                std::cerr << "A graph must be given (e.g. via Pathfinder load) to use the --csv option" << std::endl;
                 return 1;
             }
 

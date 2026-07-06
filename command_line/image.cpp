@@ -1,19 +1,19 @@
 // Copyright 2023 Anton Korobeynikov
 
-// This file is part of BandagePro++
+// This file is part of Pathfinder
 
-// BandagePro++ is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// BandagePro++ is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "image.h"
@@ -40,7 +40,7 @@
 
 CLI::App *addImageSubcommand(CLI::App &app, ImageCmd &cmd) {
     auto *image = app.add_subcommand("image", "Generate an image file of a graph");
-    image->add_option("<graph>", cmd.m_graph, "A graph file of any type supported by Bandage")
+    image->add_option("<graph>", cmd.m_graph, "A graph file of any type supported by Pathfinder")
             ->required()->check(CLI::ExistingFile);
     image->add_option("<output_file>", cmd.m_image, "The image file to be created (must end in '.jpg', '.png' or '.svg')")
             ->required();
@@ -68,14 +68,14 @@ int handleImageCmd(QApplication *app,
     else if (imageFileExtension == ".svg")
         pixelImage = false;
     else {
-        outputText("BandagePro++ error: the output filename must end in .png, .jpg or .svg", &err);
+        outputText("Pathfinder error: the output filename must end in .png, .jpg or .svg", &err);
         return 1;
     }
 
     QString inputFile = QString::fromStdString(cmd.m_graph.generic_string());
     bool loadSuccess = g_assemblyGraph->loadGraphFromFile(inputFile);
     if (!loadSuccess) {
-        outputText("BandagePro++ error: could not load " + inputFile, &err);
+        outputText("Pathfinder error: could not load " + inputFile, &err);
         return 1;
     }
 
@@ -83,7 +83,7 @@ int handleImageCmd(QApplication *app,
     // default node outline to a nonzero value.
     g_settings->outlineThickness = 0.3;
 
-    // For Bandage image, it is necessary to position node labels at the
+    // For Pathfinder image, it is necessary to position node labels at the
     // centre of the node, not the visible centre(s).  This is because there
     // is no viewport.
     g_settings->positionTextNodeCentre = true;
@@ -142,7 +142,7 @@ int handleImageCmd(QApplication *app,
 
 
     g_assemblyGraph->markNodesToDraw(scope, startingNodes);
-    BandageGraphicsScene scene;
+    PathfinderGraphicsScene scene;
     {
         GraphLayoutStorage layout =
                 GraphLayoutWorker(g_settings->graphLayoutQuality,

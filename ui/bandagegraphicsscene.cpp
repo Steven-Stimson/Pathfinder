@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "bandagegraphicsscene.h"
@@ -28,7 +28,7 @@
 
 #include <unordered_set>
 
-BandageGraphicsScene::BandageGraphicsScene(QObject *parent) :
+PathfinderGraphicsScene::PathfinderGraphicsScene(QObject *parent) :
     QGraphicsScene(parent)
 { }
 
@@ -54,7 +54,7 @@ static bool compareNodePointers(const DeBruijnNode * a, const DeBruijnNode * b) 
 }
 
 // This function returns all of the selected nodes, sorted by their node number.
-std::vector<DeBruijnNode *> BandageGraphicsScene::getSelectedNodes() {
+std::vector<DeBruijnNode *> PathfinderGraphicsScene::getSelectedNodes() {
     std::vector<DeBruijnNode *> returnVector;
 
     for (auto *selectedItem : selectedItems())
@@ -70,7 +70,7 @@ std::vector<DeBruijnNode *> BandageGraphicsScene::getSelectedNodes() {
 // returned.  If a negative node is selected, its positive complement is in the
 // results.  If both nodes in a pair are selected, then only the positive node
 // of the pair is in the results.
-std::vector<DeBruijnNode *> BandageGraphicsScene::getSelectedPositiveNodes() {
+std::vector<DeBruijnNode *> PathfinderGraphicsScene::getSelectedPositiveNodes() {
     std::vector<DeBruijnNode *> selectedNodes = getSelectedNodes();
 
     //First turn all of the nodes to positive nodes.
@@ -82,7 +82,7 @@ std::vector<DeBruijnNode *> BandageGraphicsScene::getSelectedPositiveNodes() {
 }
 
 //This function returns all of the selected graphics item nodes, unsorted.
-std::vector<GraphicsItemNode *> BandageGraphicsScene::getSelectedGraphicsItemNodes() {
+std::vector<GraphicsItemNode *> PathfinderGraphicsScene::getSelectedGraphicsItemNodes() {
     std::vector<GraphicsItemNode *> returnVector;
 
     for (auto *selectedItem : selectedItems())
@@ -93,7 +93,7 @@ std::vector<GraphicsItemNode *> BandageGraphicsScene::getSelectedGraphicsItemNod
 }
 
 
-std::vector<DeBruijnEdge *> BandageGraphicsScene::getSelectedEdges() {
+std::vector<DeBruijnEdge *> PathfinderGraphicsScene::getSelectedEdges() {
     std::vector<DeBruijnEdge *> returnVector;
 
     for (auto *selectedItem : selectedItems())
@@ -103,7 +103,7 @@ std::vector<DeBruijnEdge *> BandageGraphicsScene::getSelectedEdges() {
     return returnVector;
 }
 
-DeBruijnNode * BandageGraphicsScene::getOneSelectedNode() {
+DeBruijnNode * PathfinderGraphicsScene::getOneSelectedNode() {
     std::vector<DeBruijnNode *> selectedNodes = getSelectedNodes();
     if (selectedNodes.empty())
         return nullptr;
@@ -111,7 +111,7 @@ DeBruijnNode * BandageGraphicsScene::getOneSelectedNode() {
     return selectedNodes.front();
 }
 
-DeBruijnEdge * BandageGraphicsScene::getOneSelectedEdge()
+DeBruijnEdge * PathfinderGraphicsScene::getOneSelectedEdge()
 {
     std::vector<DeBruijnEdge *> selectedEdges = getSelectedEdges();
     if (selectedEdges.empty())
@@ -124,7 +124,7 @@ DeBruijnEdge * BandageGraphicsScene::getOneSelectedEdge()
 //graph and a 0 if it can't be done.  However, it will always return the
 //positive node in the pair, and if two complementary nodes are selected, it
 //will still work.
-DeBruijnNode * BandageGraphicsScene::getOnePositiveSelectedNode()
+DeBruijnNode * PathfinderGraphicsScene::getOnePositiveSelectedNode()
 {
     std::vector<DeBruijnNode *> selectedNodes = getSelectedNodes();
     if (selectedNodes.empty())
@@ -147,7 +147,7 @@ DeBruijnNode * BandageGraphicsScene::getOnePositiveSelectedNode()
     return nullptr;
 }
 
-double BandageGraphicsScene::getTopZValue()
+double PathfinderGraphicsScene::getTopZValue()
 {
     double topZ = 0.0;
 
@@ -170,7 +170,7 @@ double BandageGraphicsScene::getTopZValue()
 
 
 //Expands the scene rectangle a bit beyond the items, so they aren't drawn right to the edge.
-void BandageGraphicsScene::setSceneRectangle()
+void PathfinderGraphicsScene::setSceneRectangle()
 {
     QRectF boundingRect = itemsBoundingRect();
     double width = boundingRect.width();
@@ -186,7 +186,7 @@ void BandageGraphicsScene::setSceneRectangle()
 
 //After the user drags nodes, it may be necessary to expand the scene rectangle
 //if the nodes were moved out of the existing rectangle.
-void BandageGraphicsScene::possiblyExpandSceneRectangle(std::vector<GraphicsItemNode *> * movedNodes)
+void PathfinderGraphicsScene::possiblyExpandSceneRectangle(std::vector<GraphicsItemNode *> * movedNodes)
 {
     QRectF currentSceneRect = sceneRect();
     QRectF newSceneRect = currentSceneRect;
@@ -201,7 +201,7 @@ void BandageGraphicsScene::possiblyExpandSceneRectangle(std::vector<GraphicsItem
         setSceneRect(newSceneRect);
 }
 
-void BandageGraphicsScene::addGraphicsItemsToScene(AssemblyGraph &graph,
+void PathfinderGraphicsScene::addGraphicsItemsToScene(AssemblyGraph &graph,
                                                    const GraphLayout &layout) {
     clear();
 
@@ -265,12 +265,12 @@ void BandageGraphicsScene::addGraphicsItemsToScene(AssemblyGraph &graph,
     }
 }
 
-void BandageGraphicsScene::removeAllGraphicsEdgesFromNode(DeBruijnNode *node, bool reverseComplement) {
+void PathfinderGraphicsScene::removeAllGraphicsEdgesFromNode(DeBruijnNode *node, bool reverseComplement) {
     std::vector<DeBruijnEdge*> edges(node->edgeBegin(), node->edgeEnd());
     removeGraphicsItemEdges(edges, reverseComplement);
 }
 
-void BandageGraphicsScene::removeGraphicsItemEdges(const std::vector<DeBruijnEdge *> &edges,
+void PathfinderGraphicsScene::removeGraphicsItemEdges(const std::vector<DeBruijnEdge *> &edges,
                                                    bool reverseComplement) {
     std::unordered_set<GraphicsItemEdge *> graphicsItemEdgesToDelete;
     for (auto *edge : edges) {
@@ -290,7 +290,7 @@ void BandageGraphicsScene::removeGraphicsItemEdges(const std::vector<DeBruijnEdg
     if (graphicsItemEdgesToDelete.empty())
         return;
 
-    BandageGraphicsScene *scene = dynamic_cast<BandageGraphicsScene*>((*graphicsItemEdgesToDelete.begin())->scene());
+    PathfinderGraphicsScene *scene = dynamic_cast<PathfinderGraphicsScene*>((*graphicsItemEdgesToDelete.begin())->scene());
     if (!scene)
         return;
 
@@ -298,7 +298,7 @@ void BandageGraphicsScene::removeGraphicsItemEdges(const std::vector<DeBruijnEdg
 
 }
 
-void BandageGraphicsScene::removeGraphicsItemEdges(const std::unordered_set<GraphicsItemEdge *> &edges) {
+void PathfinderGraphicsScene::removeGraphicsItemEdges(const std::unordered_set<GraphicsItemEdge *> &edges) {
     blockSignals(true);
 
     for (auto *graphicsItemEdge : edges) {
@@ -312,7 +312,7 @@ void BandageGraphicsScene::removeGraphicsItemEdges(const std::unordered_set<Grap
 }
 
 // If reverseComplement is true, this function will also remove the graphics items for reverse complements of the nodes.
-void BandageGraphicsScene::removeGraphicsItemNodes(const std::vector<DeBruijnNode *> &nodes,
+void PathfinderGraphicsScene::removeGraphicsItemNodes(const std::vector<DeBruijnNode *> &nodes,
                                                    bool reverseComplement) {
     std::unordered_set<GraphicsItemNode *> graphicsItemNodesToDelete;
     for (auto *node : nodes) {
@@ -334,14 +334,14 @@ void BandageGraphicsScene::removeGraphicsItemNodes(const std::vector<DeBruijnNod
     if (graphicsItemNodesToDelete.empty())
         return;
 
-    BandageGraphicsScene *scene = dynamic_cast<BandageGraphicsScene*>((*graphicsItemNodesToDelete.begin())->scene());
+    PathfinderGraphicsScene *scene = dynamic_cast<PathfinderGraphicsScene*>((*graphicsItemNodesToDelete.begin())->scene());
     if (!scene)
         return;
 
     scene->removeGraphicsItemNodes(graphicsItemNodesToDelete);
 }
 
-void BandageGraphicsScene::removeGraphicsItemNodes(const std::unordered_set<GraphicsItemNode*> &nodes) {
+void PathfinderGraphicsScene::removeGraphicsItemNodes(const std::unordered_set<GraphicsItemNode*> &nodes) {
     blockSignals(true);
     for (auto *graphicsItemNode : nodes) {
         if (graphicsItemNode == nullptr)
@@ -353,7 +353,7 @@ void BandageGraphicsScene::removeGraphicsItemNodes(const std::unordered_set<Grap
     blockSignals(false);
 }
 
-void BandageGraphicsScene::duplicateGraphicsNode(DeBruijnNode *originalNode, DeBruijnNode *newNode,
+void PathfinderGraphicsScene::duplicateGraphicsNode(DeBruijnNode *originalNode, DeBruijnNode *newNode,
                                                  const AssemblyGraph &graph) {
     GraphicsItemNode * originalGraphicsItemNode = originalNode->getGraphicsItemNode();
     if (originalGraphicsItemNode == nullptr)

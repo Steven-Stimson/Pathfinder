@@ -1,19 +1,19 @@
 // Copyright 2023 Anton Korobeynikov
 
-// This file is part of BandagePro++
+// This file is part of Pathfinder
 
-// BandagePro++ is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// BandagePro++ is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "settings.h"
 #include "CLI/Error.hpp"
@@ -231,17 +231,17 @@ static CLI::App *addGraphScopeSettings(CLI::App &app) {
                 break;
             case AROUND_NODE:
                 if (g_settings->startingNodes.isEmpty())
-                    throw CLI::ValidationError("BandagePro++ error",
+                    throw CLI::ValidationError("Pathfinder error",
                                                "A list of starting nodes must be given with the --nodes option\nwhen the aroundnodes scope is used.");
                 break;
             case AROUND_BLAST_HITS:
                 if (g_settings->blastQueryFilename.isEmpty())
-                    throw CLI::ValidationError("BandagePro++ error",
+                    throw CLI::ValidationError("Pathfinder error",
                                                "A BLAST query must be given with the --query option when the\naroundblast scope is used.");
                 break;
             case DEPTH_RANGE:
                 if (!scope->count("--mindepth") || !scope->count("--maxdepth"))
-                    throw CLI::ValidationError("BandagePro++ error",
+                    throw CLI::ValidationError("Pathfinder error",
                                                "A depth range must be given with the --mindepth and\n--maxdepth options when the depthrange scope is used.");
                 break;
         }
@@ -249,7 +249,7 @@ static CLI::App *addGraphScopeSettings(CLI::App &app) {
         // Make sure that the min depth is less than or equal to the max read
         // depth.
         if (g_settings->minDepthRange > g_settings->maxDepthRange)
-             throw CLI::ValidationError("BandagePro++ error",
+             throw CLI::ValidationError("Pathfinder error",
                                         "the maximum depth (--maxdepth=" + std::to_string(g_settings->maxDepthRange) + ") "
                                         "must be greater than or equal to the minimum depth (--mindepth=" + std::to_string(g_settings->minDepthRange) + ").");
     });
@@ -442,7 +442,7 @@ static CLI::App *addDepthColorsSettings(CLI::App &app) {
             g_settings->autoDepthValue = false;
 
         if (g_settings->lowDepthValue > g_settings->highDepthValue)
-            throw CLI::ValidationError("BandagePro++ error",
+            throw CLI::ValidationError("Pathfinder error",
                                        "the maximum depth (--depvalhi=" + std::to_string(g_settings->highDepthValue) + ") "
                                        "must be greater than or equal to the minimum depth (--depvalhi=" + std::to_string(g_settings->lowDepthValue) + ").");
     });
@@ -453,7 +453,7 @@ static CLI::App *addDepthColorsSettings(CLI::App &app) {
 static CLI::App *addBlastSearchSettings(CLI::App &app) {
     auto *bs = app.add_option_group("BLAST search");
     bs->add_option("--blastp", g_settings->blastSearchParameters,
-                   "Parameters to be used by blastn and tblastn when conducting a BLAST search in BandagePro++.\n"
+                   "Parameters to be used by blastn and tblastn when conducting a BLAST search in Pathfinder.\n"
                    "Format BLAST parameters exactly as they would be used for blastn/tblastn on the command line, and enclose them in quotes.");
 
     add_setting(*bs, "--alfilter", g_settings->blastAlignmentLengthFilter,
@@ -472,7 +472,7 @@ static CLI::App *addBlastSearchSettings(CLI::App &app) {
 
 static CLI::App *addQueryPathsSettings(CLI::App &app) {
     auto *bqp = app.add_option_group("BLAST query paths",
-                                     "These settings control how BandagePro++ searches for query paths after conducting a BLAST search");
+                                     "These settings control how Pathfinder searches for query paths after conducting a BLAST search");
 
     add_setting(*bqp, "--pathnodes", g_settings->maxQueryPathNodes,
                 "The number of allowed nodes in a BLAST query path");
@@ -502,7 +502,7 @@ static CLI::App *addQueryPathsSettings(CLI::App &app) {
         double maxLengthPercentage = g_settings->maxLengthPercentage;
         if (minLengthPercentageOn && maxLengthPercentageOn &&
             minLengthPercentage > maxLengthPercentage)
-            throw CLI::ValidationError("BandagePro++ error",
+            throw CLI::ValidationError("Pathfinder error",
                                        "the maximum BLAST query path length percent discrepancy must be greater than or equal to the minimum length discrepancy.");
 
         // Make sure that the min length discrepancy is less than or equal to the max
@@ -513,7 +513,7 @@ static CLI::App *addQueryPathsSettings(CLI::App &app) {
         int maxLengthBaseDiscrepancy = g_settings->maxLengthBaseDiscrepancy;
         if (minLengthBaseDiscrepancyOn && maxLengthBaseDiscrepancyOn &&
             minLengthBaseDiscrepancy > maxLengthBaseDiscrepancy)
-            throw CLI::ValidationError("BandagePro++ error",
+            throw CLI::ValidationError("Pathfinder error",
                                        "the maximum BLAST query path length base discrepancy must be greater than or equal to the minimum length discrepancy.");
     });
 

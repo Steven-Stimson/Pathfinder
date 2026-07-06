@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "graphicsitemnode.h"
@@ -410,7 +410,7 @@ void GraphicsItemNode::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
     //If this node is selected, then move all of the other selected nodes too.
     //If it is not selected, then only move this node.
     std::vector<GraphicsItemNode *> nodesToMove;
-    auto *graphicsScene = dynamic_cast<BandageGraphicsScene *>(scene());
+    auto *graphicsScene = dynamic_cast<PathfinderGraphicsScene *>(scene());
     if (isSelected())
         nodesToMove = graphicsScene->getSelectedGraphicsItemNodes();
     else
@@ -433,7 +433,7 @@ void GraphicsItemNode::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
     QPointF shift = m_linePoints[0] - m_startPoints[0];
     if (shift.isNull()) return;
 
-    auto *graphicsScene = dynamic_cast<BandageGraphicsScene *>(scene());
+    auto *graphicsScene = dynamic_cast<PathfinderGraphicsScene *>(scene());
     std::vector<GraphicsItemNode *> movedNodes;
     if (isSelected())
         movedNodes = graphicsScene->getSelectedGraphicsItemNodes();

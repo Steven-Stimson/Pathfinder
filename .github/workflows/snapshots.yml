@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - "v*.*"
-    branches: [ dev, Pathfinder, 'BandagePro*' ]
+    branches: [ dev, Pathfinder, 'Pathfinder' ]
 
 env:
   BUILD_TYPE: Release
@@ -82,14 +82,14 @@ jobs:
           export EXTRA_PLATFORM_PLUGINS="libqoffscreen.so;libqminimal.so"
 
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
-          mv BandagePro++*.AppImage BandageProPP-Linux-${{steps.commit.outputs.short}}.AppImage
+          mv Pathfinder*.AppImage PathfinderPP-Linux-${{steps.commit.outputs.short}}.AppImage
         shell: bash
 
       - name: '📤 Upload artifact: AppImage'
         uses: actions/upload-artifact@v4
         with:
-          name: BandageProPP-Linux-${{steps.commit.outputs.short}}.AppImage
-          path: ${{github.workspace}}/build/BandageProPP-Linux-*.AppImage
+          name: PathfinderPP-Linux-${{steps.commit.outputs.short}}.AppImage
+          path: ${{github.workspace}}/build/PathfinderPP-Linux-*.AppImage
 
   build-mac:
     runs-on: macos-latest
@@ -148,17 +148,17 @@ jobs:
       - name: '📦 Make DMG'
         working-directory: ${{github.workspace}}/build
         run: |
-          mkdir -p BandagePro++.app/Contents/Pathfinder/TTT
-          cp ../Pathfinder/TTT/ttt BandagePro++.app/Contents/Pathfinder/TTT/
-          cp ../Pathfinder/TTT/glpsol BandagePro++.app/Contents/Pathfinder/TTT/
-          macdeployqt BandagePro++.app -dmg
-          mv *.dmg BandageProPP-macOS-${{steps.commit.outputs.short}}.dmg
+          mkdir -p Pathfinder.app/Contents/Pathfinder/TTT
+          cp ../Pathfinder/TTT/ttt Pathfinder.app/Contents/Pathfinder/TTT/
+          cp ../Pathfinder/TTT/glpsol Pathfinder.app/Contents/Pathfinder/TTT/
+          macdeployqt Pathfinder.app -dmg
+          mv *.dmg PathfinderPP-macOS-${{steps.commit.outputs.short}}.dmg
 
       - name: '📤 Upload artifact: DMG'
         uses: actions/upload-artifact@v4
         with:
-          name: BandageProPP-macOS-${{steps.commit.outputs.short}}.dmg
-          path: ${{github.workspace}}/build/BandageProPP-macOS-*.dmg
+          name: PathfinderPP-macOS-${{steps.commit.outputs.short}}.dmg
+          path: ${{github.workspace}}/build/PathfinderPP-macOS-*.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -219,18 +219,18 @@ jobs:
       - name: '📦 Make package'
         working-directory: ${{github.workspace}}/build
         run: |
-          mkdir -p BandageProPP/Pathfinder/TTT
-          cp BandagePro++.exe BandageProPP/
-          cp ../Pathfinder/TTT/ttt.exe BandageProPP/Pathfinder/TTT/
-          cp ../Pathfinder/TTT/glpsol.exe BandageProPP/Pathfinder/TTT/
-          windeployqt BandageProPP --release --compiler-runtime
-          cd BandageProPP && 7z a ../BandageProPP-win-${{steps.commit.outputs.short}}.zip .
+          mkdir -p PathfinderPP/Pathfinder/TTT
+          cp Pathfinder.exe PathfinderPP/
+          cp ../Pathfinder/TTT/ttt.exe PathfinderPP/Pathfinder/TTT/
+          cp ../Pathfinder/TTT/glpsol.exe PathfinderPP/Pathfinder/TTT/
+          windeployqt PathfinderPP --release --compiler-runtime
+          cd PathfinderPP && 7z a ../PathfinderPP-win-${{steps.commit.outputs.short}}.zip .
 
       - name: '📤 Upload artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: BandageProPP-win-${{steps.commit.outputs.short}}
-          path: ${{github.workspace}}/build/BandageProPP-win-*.zip
+          name: PathfinderPP-win-${{steps.commit.outputs.short}}
+          path: ${{github.workspace}}/build/PathfinderPP-win-*.zip
 
   # Upload continuous build
   upload:
@@ -255,6 +255,6 @@ jobs:
         run: |
             wget -q https://github.com/TheAssassin/pyuploadtool/releases/download/continuous/pyuploadtool-x86_64.AppImage
             chmod +x pyuploadtool-x86_64.AppImage
-            ./pyuploadtool-x86_64.AppImage **/BandageProPP-Linux-*.AppImage
-            ./pyuploadtool-x86_64.AppImage **/BandageProPP-macOS-*.dmg
-            ./pyuploadtool-x86_64.AppImage **/BandageProPP-win-*.zip
+            ./pyuploadtool-x86_64.AppImage **/PathfinderPP-Linux-*.AppImage
+            ./pyuploadtool-x86_64.AppImage **/PathfinderPP-macOS-*.dmg
+            ./pyuploadtool-x86_64.AppImage **/PathfinderPP-win-*.zip

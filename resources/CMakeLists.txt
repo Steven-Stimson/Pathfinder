@@ -1,5 +1,5 @@
 install(
-    FILES BandageProPP.desktop
+    FILES PathfinderPP.desktop
     DESTINATION share/applications/
 )
 

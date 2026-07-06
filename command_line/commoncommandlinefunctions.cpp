@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "commoncommandlinefunctions.h"
@@ -146,7 +146,7 @@ QString getDefaultColorMap(ColorMap colorMap)
     return "(default: " + getColorMapName(colorMap) + ")";
 }
 
-std::string getBandageTitleAsciiArt()
+std::string getPathfinderTitleAsciiArt()
 {
     return "  ____                  _                  \n |  _ \\                | |                 \n | |_) | __ _ _ __   __| | __ _  __ _  ___ \n |  _ < / _` | '_ \\ / _` |/ _` |/ _` |/ _ \\\n | |_) | (_| | | | | (_| | (_| | (_| |  __/\n |____/ \\__,_|_| |_|\\__,_|\\__,_|\\__, |\\___|\n                                 __/ |     \n                                |___/      ";
 }
@@ -188,11 +188,11 @@ bool isCommand(const QString& text)
 
 bool isError(const QString& text)
 {
-    return text.startsWith("BandagePro++ error");
+    return text.startsWith("Pathfinder error");
 }
 
 void getOnlineHelpMessage(QStringList * text)
 {
-    *text << "Online Bandage help: https://github.com/asl/BandageProPP/wiki";
+    *text << "Online Pathfinder help: https://github.com/asl/PathfinderPP/wiki";
     *text << "";
 }

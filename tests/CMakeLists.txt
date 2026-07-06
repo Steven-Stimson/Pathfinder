@@ -1,4 +1,4 @@
-add_executable(BandageTests bandagetests.cpp)
-add_test(NAME BandageTests COMMAND BandageTests)
+add_executable(PathfinderTests bandagetests.cpp)
+add_test(NAME PathfinderTests COMMAND PathfinderTests)
 
-target_link_libraries(BandageTests PRIVATE BandageCLI BandageLib OGDF Qt6::Widgets Qt6::Test CLI11::CLI11)
+target_link_libraries(PathfinderTests PRIVATE PathfinderCLI PathfinderLib OGDF Qt6::Widgets Qt6::Test CLI11::CLI11)

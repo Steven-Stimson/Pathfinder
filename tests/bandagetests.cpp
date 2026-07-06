@@ -1,19 +1,19 @@
 //Copyright 2015 Ryan Wick
 
-//This file is part of Bandage.
+//This file is part of Pathfinder.
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "graph/assemblygraph.h"
@@ -44,7 +44,7 @@
 
 #include <iostream>
 
-class BandageTests : public QObject
+class PathfinderTests : public QObject
 {
     Q_OBJECT
 
@@ -63,7 +63,7 @@ class BandageTests : public QObject
     QString getTestDirectory() const {
         QDir directory = QDir::current();
 
-        // We want to find a directory "Bandage/tests/inputs".  Keep backing up in the
+        // We want to find a directory "Pathfinder/tests/inputs".  Keep backing up in the
         // directory structure until we find it.
         QString path;
         while (true)
@@ -80,7 +80,7 @@ class BandageTests : public QObject
     }
 
 public:
-    BandageTests()
+    PathfinderTests()
             : m_tmpDir("bandage-tests") {
         std::cout << "sizeof(DeBruijnNode)=" << sizeof(DeBruijnNode)
                   << ", sizeof(DeBruijnEdge)=" << sizeof(DeBruijnEdge) << std::endl;
@@ -145,7 +145,7 @@ private:
 
 
 
-void BandageTests::loadFastg()
+void PathfinderTests::loadFastg()
 {
     bool fastgGraphLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test.fastg"));
 
@@ -163,7 +163,7 @@ void BandageTests::loadFastg()
     QCOMPARE(node28->getLength(), 79);
 }
 
-void BandageTests::loadLogan()
+void PathfinderTests::loadLogan()
 {
     bool fastgGraphLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test.contigs.fa.zst"));
 
@@ -181,7 +181,7 @@ void BandageTests::loadLogan()
     QCOMPARE(node28->getLength(), 60);
 }
 
-void BandageTests::loadGFAWithPlaceholders()
+void PathfinderTests::loadGFAWithPlaceholders()
 {
     bool gfaGraphLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test_not_defined.gfa"));
 
@@ -201,7 +201,7 @@ void BandageTests::loadGFAWithPlaceholders()
     QCOMPARE(node4->getLength(), 0);
 }
 
-void BandageTests::loadGFA12()
+void PathfinderTests::loadGFA12()
 {
     bool gfaGraphLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test_gfa12.gfa.gz"));
 
@@ -215,7 +215,7 @@ void BandageTests::loadGFA12()
 }
 
 
-void BandageTests::loadGFA()
+void PathfinderTests::loadGFA()
 {
     //Check that the graph loaded properly.
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.gfa")));
@@ -231,7 +231,7 @@ void BandageTests::loadGFA()
     QCOMPARE(node14->getLength(), 120);
 }
 
-void BandageTests::loadGAF()
+void PathfinderTests::loadGAF()
 {
     // Check that the graph loaded properly.
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test_gaf.gfa")));
@@ -251,7 +251,7 @@ void BandageTests::loadGAF()
     QCOMPARE(p.getLength(), 71);
 }
 
-void BandageTests::loadSPAdesPaths()
+void PathfinderTests::loadSPAdesPaths()
 {
     // Check that the graph loaded properly.
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.gfa")));
@@ -276,7 +276,7 @@ void BandageTests::loadSPAdesPaths()
     QCOMPARE(p22.getLength(), 6000);
 }
 
-void BandageTests::loadLinks()
+void PathfinderTests::loadLinks()
 {
     // Check that the graph loaded properly.
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.gfa")));
@@ -298,7 +298,7 @@ void BandageTests::loadLinks()
 }
 
 
-void BandageTests::loadTrinity()
+void PathfinderTests::loadTrinity()
 {
     bool trinityLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test.Trinity.fasta"));
 
@@ -319,7 +319,7 @@ void BandageTests::loadTrinity()
 
 //LastGraph files have no overlap in the edges, so these tests look at paths
 //where the connections are simple.
-void BandageTests::pathFunctionsOnGFA()
+void PathfinderTests::pathFunctionsOnGFA()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.gfa")));
 
@@ -379,7 +379,7 @@ void BandageTests::pathFunctionsOnGFA()
 
 //FASTG files have overlaps in the edges, so these tests look at paths where
 //the overlap has to be removed from the path sequence.
-void BandageTests::pathFunctionsOnFastg()
+void PathfinderTests::pathFunctionsOnFastg()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -397,7 +397,7 @@ void BandageTests::pathFunctionsOnFastg()
 
 //This function tests paths on a GFA file which keeps its sequences in the GFA
 //file.
-void BandageTests::pathFunctionsOnGfaSequencesInGraph()
+void PathfinderTests::pathFunctionsOnGfaSequencesInGraph()
 {
     bool gfaLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test_plasmids.gfa"));
     QVERIFY(gfaLoaded);
@@ -422,7 +422,7 @@ void BandageTests::pathFunctionsOnGfaSequencesInGraph()
 
 //This function tests paths on a GFA file which keeps its sequences in a
 //separate FASTA file.
-void BandageTests::pathFunctionsOnGfaSequencesInFasta()
+void PathfinderTests::pathFunctionsOnGfaSequencesInFasta()
 {
     bool gfaLoaded = g_assemblyGraph->loadGraphFromFile(testFile("test_plasmids_separate_sequences.gfa"));
     QVERIFY(gfaLoaded);
@@ -464,7 +464,7 @@ void BandageTests::pathFunctionsOnGfaSequencesInFasta()
 }
 
 
-void BandageTests::graphLocationFunctions()
+void PathfinderTests::graphLocationFunctions()
 {
     //First do some tests with a FASTG, where the overlap results in a simpler
     //situations: all positions have a reverse complement position in the
@@ -497,7 +497,7 @@ void BandageTests::graphLocationFunctions()
 
 
 
-void BandageTests::loadCsvData()
+void PathfinderTests::loadCsvData()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.gfa")));
 
@@ -571,7 +571,7 @@ void BandageTests::loadCsvData()
 }
 
 
-void BandageTests::loadCsvDataTrinity()
+void PathfinderTests::loadCsvDataTrinity()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.Trinity.fasta")));
 
@@ -599,7 +599,7 @@ void BandageTests::loadCsvDataTrinity()
     QCOMPARE(g_assemblyGraph->getCsvLine(node3940Plus, 0), QString("3940PLUS"));
 }
 
-void BandageTests::blastSearch()
+void PathfinderTests::blastSearch()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -644,7 +644,7 @@ void BandageTests::blastSearch()
 
 
 
-void BandageTests::blastSearchFilters()
+void PathfinderTests::blastSearchFilters()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -710,7 +710,7 @@ void BandageTests::blastSearchFilters()
 
 
 
-void BandageTests::graphScope()
+void PathfinderTests::graphScope()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -894,7 +894,7 @@ void BandageTests::graphScope()
 }
 
 
-void BandageTests::graphLayout() {
+void PathfinderTests::graphLayout() {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
     QString errorTitle;
@@ -959,7 +959,7 @@ static void parseSettings(const QStringList &commandLineSettings) {
 }
 
 
-void BandageTests::commandLineSettings() {
+void PathfinderTests::commandLineSettings() {
     QStringList commandLineSettings;
 
     commandLineSettings = QString("--scope entire").split(" ");
@@ -1273,7 +1273,7 @@ void BandageTests::commandLineSettings() {
 }
 
 
-void BandageTests::sciNotComparisons()
+void PathfinderTests::sciNotComparisons()
 {
     SciNot sn01(1.0, 10);
     SciNot sn02(10.0, 9);
@@ -1318,7 +1318,7 @@ void BandageTests::sciNotComparisons()
 }
 
 
-void BandageTests::graphEdits()
+void PathfinderTests::graphEdits()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -1362,7 +1362,7 @@ void BandageTests::graphEdits()
 
 
 
-void BandageTests::fastgToGfa()
+void PathfinderTests::fastgToGfa()
 {
     //First load the graph as a FASTG and pull out some information and a
     //path sequence.
@@ -1412,7 +1412,7 @@ void BandageTests::fastgToGfa()
 }
 
 
-void BandageTests::mergeNodesOnGfa()
+void PathfinderTests::mergeNodesOnGfa()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test_plasmids.gfa")));
 
@@ -1472,7 +1472,7 @@ void BandageTests::mergeNodesOnGfa()
 
 
 
-void BandageTests::changeNodeNames()
+void PathfinderTests::changeNodeNames()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -1491,7 +1491,7 @@ void BandageTests::changeNodeNames()
     QCOMPARE(nodeCountBefore, nodeCountAfter);
 }
 
-void BandageTests::changeNodeDepths()
+void PathfinderTests::changeNodeDepths()
 {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test.fastg")));
 
@@ -1517,7 +1517,7 @@ void BandageTests::changeNodeDepths()
     QCOMPARE(0.5, node7Minus->getDepth());
 }
 
-void BandageTests::blastQueryPaths() {
+void PathfinderTests::blastQueryPaths() {
     QVERIFY(g_assemblyGraph->loadGraphFromFile(testFile("test_query_paths.gfa")));
 
     Settings defaultSettings;
@@ -1671,7 +1671,7 @@ void BandageTests::blastQueryPaths() {
 }
 
 
-void BandageTests::bandageInfo()
+void PathfinderTests::bandageInfo()
 {
     int n50 = 0;
     int shortestNode = 0;
@@ -1716,7 +1716,7 @@ void BandageTests::bandageInfo()
     QCOMPARE(30959, largestComponentLength);
 }
 
-void BandageTests::sequenceInit() {
+void PathfinderTests::sequenceInit() {
     Sequence sequenceFromString{"ATGC"};
     Sequence sequenceFromQByteArray{QByteArray{"ATGC"}};
     Sequence sequenceRevComp{"GCAT", true};
@@ -1728,7 +1728,7 @@ void BandageTests::sequenceInit() {
     QCOMPARE(sequenceFromStringLower, sequenceFromQByteArray);
 }
 
-void BandageTests::sequenceInitN() {
+void PathfinderTests::sequenceInitN() {
     Sequence sequenceFromString{"ATGCN"};
     Sequence sequenceFromQByteArray{QByteArray{"ATGCN"}};
     Sequence sequenceRevComp{"NGCAT", true};
@@ -1740,7 +1740,7 @@ void BandageTests::sequenceInitN() {
     QCOMPARE(sequenceFromStringLower, sequenceFromQByteArray);
 }
 
-void BandageTests::sequenceAccess() {
+void PathfinderTests::sequenceAccess() {
     Sequence sequence{"ATGCN"};
 
     QCOMPARE(sequence[0], 'A');
@@ -1758,7 +1758,7 @@ void BandageTests::sequenceAccess() {
     QCOMPARE(sequenceRC[4], 'T');
 }
 
-void BandageTests::sequenceSubstring() {
+void PathfinderTests::sequenceSubstring() {
     Sequence sequence{"ATGCNATGCN"};
     Sequence substr = sequence.Subseq(2, 7); // GCNAT
 
@@ -1785,7 +1785,7 @@ void BandageTests::sequenceSubstring() {
     QCOMPARE(rcSubstr[4], 'G');
 }
 
-void BandageTests::sequenceDoubleReverseComplement() {
+void PathfinderTests::sequenceDoubleReverseComplement() {
     Sequence sequence{"ATGCNATGCN"};
 
     QCOMPARE(sequence, sequence.GetReverseComplement().GetReverseComplement());
@@ -1805,7 +1805,7 @@ void BandageTests::sequenceDoubleReverseComplement() {
 
 
 
-DeBruijnEdge * BandageTests::getEdgeFromNodeNames(QString startingNodeName,
+DeBruijnEdge * PathfinderTests::getEdgeFromNodeNames(QString startingNodeName,
                                                   QString endingNodeName) const
 {
     DeBruijnNode * startingNode = g_assemblyGraph->m_deBruijnGraphNodes[startingNodeName.toStdString()];
@@ -1869,7 +1869,7 @@ static QByteArray getReverseComplement(const QByteArray& forwardSequence) {
 
 //This function checks to see if two circular sequences match.  It needs to
 //check each possible rotation, as well as reverse complements.
-bool BandageTests::doCircularSequencesMatch(QByteArray s1, QByteArray s2) const
+bool PathfinderTests::doCircularSequencesMatch(QByteArray s1, QByteArray s2) const
 {
     for (int i = 0; i < s1.length() - 1; ++i)
     {
@@ -1891,5 +1891,5 @@ bool BandageTests::doCircularSequencesMatch(QByteArray s1, QByteArray s2) const
     return false;
 }
 
-QTEST_MAIN(BandageTests)
+QTEST_MAIN(PathfinderTests)
 #include "bandagetests.moc"

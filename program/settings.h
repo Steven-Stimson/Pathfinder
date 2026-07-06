@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #ifndef SETTINGS_H
@@ -191,12 +191,12 @@ public:
 
     QColor defaultCustomNodeColour;
 
-    //These specify the range of overlaps to look for when Bandage determines
+    //These specify the range of overlaps to look for when Pathfinder determines
     //edge overlaps automatically.
     int minAutoFindEdgeOverlap;
     int maxAutoFindEdgeOverlap;
 
-    //These control how Bandage finds the best path in the graph to represent
+    //These control how Pathfinder finds the best path in the graph to represent
     //each BLAST query.  Some of these settings can be turned on and off and
     //therefore have a corresponding bool value.
     IntSetting maxHitsForQueryPath;

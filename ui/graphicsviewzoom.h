@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #ifndef GRAPHICS_VIEW_ZOOM_H
@@ -58,20 +58,20 @@ enum ZoomSource {MOUSE_WHEEL, SPIN_BOX, KEYBOARD, GESTURE};
  * The default zoom factor base is 1.0015.
  */
 
-class BandageGraphicsView;
+class PathfinderGraphicsView;
 
 class GraphicsViewZoom : public QObject
 {
     Q_OBJECT
 public:
-    explicit GraphicsViewZoom(BandageGraphicsView * view);
+    explicit GraphicsViewZoom(PathfinderGraphicsView * view);
     void gentleZoom(double factor, ZoomSource zoomSource);
     void setModifiers(Qt::KeyboardModifiers modifiers);
     void setZoomFactorBase(double value);
     double m_zoomFactorBase;
 
 private:
-    BandageGraphicsView * m_view;
+    PathfinderGraphicsView * m_view;
     Qt::KeyboardModifiers m_modifiers;
     QPointF targetScenePos, targetViewportPos;
     bool eventFilter(QObject * object, QEvent * event) override;

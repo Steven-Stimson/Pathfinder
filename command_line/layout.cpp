@@ -1,19 +1,19 @@
 // Copyright 2023 Anton Korobeynikov
 
-// This file is part of BandagePro++
+// This file is part of Pathfinder
 
-// BandagePro++ is free software: you can redistribute it and/or modify
+// Pathfinder is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// BandagePro++ is distributed in the hope that it will be useful,
+// Pathfinder is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+// along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "layout.h"
@@ -36,7 +36,7 @@
 
 CLI::App *addLayoutSubcommand(CLI::App &app, LayoutCmd &cmd) {
     auto *layout = app.add_subcommand("layout", "Layout the graph");
-    layout->add_option("<graph>", cmd.m_graph, "A graph file of any type supported by Bandage")
+    layout->add_option("<graph>", cmd.m_graph, "A graph file of any type supported by Pathfinder")
             ->required()->check(CLI::ExistingFile);
     layout->add_option("<layout>", cmd.m_layout, "The layout file to be created (must end with .tsv or .layout)")
             ->required();
@@ -56,14 +56,14 @@ int handleLayoutCmd(QApplication *app,
     else if (layoutFileExtension == ".layout")
         isTSV = false;
     else {
-        outputText("BandagePro++ error: the output filename must end in .tsv or .layout", &err);
+        outputText("Pathfinder error: the output filename must end in .tsv or .layout", &err);
         return 1;
     }
 
     QString inputFile = QString::fromStdString(cmd.m_graph.generic_string());
     bool loadSuccess = g_assemblyGraph->loadGraphFromFile(inputFile);
     if (!loadSuccess) {
-        outputText("BandagePro++ error: could not load " + inputFile, &err);
+        outputText("Pathfinder error: could not load " + inputFile, &err);
         return 1;
     }
 

@@ -1,19 +1,19 @@
 //Copyright 2017 Ryan Wick
 
-//This file is part of Bandage
+//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "assemblygraph.h"
@@ -450,7 +450,7 @@ bool AssemblyGraph::loadCSV(const QString &filename, QStringList *columns, QStri
 
 
 //This function extracts a node name from a string.
-//The string may be in this Bandage format:
+//The string may be in this Pathfinder format:
 //        NODE_6+_length_50434_cov_42.3615
 //Or in a number of variations of that format.
 //If the node name it finds does not end in a '+' or '-', it will add '+'.
@@ -473,7 +473,7 @@ QString AssemblyGraph::getNodeNameFromString(QString string) const
 
     QString nodeName;
 
-    //This checks for the standard Bandage format where the node name does
+    //This checks for the standard Pathfinder format where the node name does
     //not have any underscores.
     if (parts.size() == 5 && parts[1] == "length")
         nodeName = parts[0];
@@ -882,7 +882,7 @@ void AssemblyGraph::deleteEdges(const std::vector<DeBruijnEdge *> &edges)
 //This function assumes it is receiving a positive node.  It will duplicate both
 //the positive and negative node in the pair.  It divided their depth in
 //two, giving half to each node.
-void AssemblyGraph::duplicateNodePair(DeBruijnNode * node, BandageGraphicsScene * scene)
+void AssemblyGraph::duplicateNodePair(DeBruijnNode * node, PathfinderGraphicsScene * scene)
 {
     DeBruijnNode * originalPosNode = node;
     DeBruijnNode * originalNegNode = node->getReverseComplement();
@@ -973,12 +973,12 @@ static void mergeGraphicsNodes(const std::vector<DeBruijnNode *> &originalNodes,
                                const std::vector<DeBruijnNode *> &revCompOriginalNodes,
                                DeBruijnNode * newNode,
                                const AssemblyGraph &graph,
-                               BandageGraphicsScene *scene);
+                               PathfinderGraphicsScene *scene);
 
 //This function will merge the given nodes, if possible.  Nodes can only be
 //merged if they are in a simple, unbranching path with no extra edges.  If the
 //merge is successful, it returns true, otherwise false.
-bool AssemblyGraph::mergeNodes(QList<DeBruijnNode *> nodes, BandageGraphicsScene * scene) {
+bool AssemblyGraph::mergeNodes(QList<DeBruijnNode *> nodes, PathfinderGraphicsScene * scene) {
     if (nodes.empty())
         return true;
 
@@ -1090,7 +1090,7 @@ bool AssemblyGraph::mergeNodes(QList<DeBruijnNode *> nodes, BandageGraphicsScene
 static bool mergeGraphicsNodes2(const std::vector<DeBruijnNode *> &originalNodes,
                                 DeBruijnNode *newNode,
                                 const AssemblyGraph &graph,
-                                BandageGraphicsScene *scene) {
+                                PathfinderGraphicsScene *scene) {
     bool success = true;
     std::vector<QPointF> linePoints;
 
@@ -1148,7 +1148,7 @@ static void mergeGraphicsNodes(const std::vector<DeBruijnNode *> &originalNodes,
                                const std::vector<DeBruijnNode *> &revCompOriginalNodes,
                                DeBruijnNode * newNode,
                                const AssemblyGraph &graph,
-                               BandageGraphicsScene * scene) {
+                               PathfinderGraphicsScene * scene) {
     bool success = mergeGraphicsNodes2(originalNodes, newNode, graph, scene);
     if (success)
         newNode->setAsDrawn();
@@ -1160,14 +1160,14 @@ static void mergeGraphicsNodes(const std::vector<DeBruijnNode *> &originalNodes,
             newRevComp->setAsDrawn();
     }
 
-    BandageGraphicsScene::removeGraphicsItemNodes(originalNodes, true);
+    PathfinderGraphicsScene::removeGraphicsItemNodes(originalNodes, true);
 }
 
 //This function simplifies the graph by merging all possible nodes in a simple
 //line.  It returns the number of merges that it did.
 //It gets a pointer to the progress dialog as well so it can check to see if the
 //user has cancelled the merge.
-int AssemblyGraph::mergeAllPossible(BandageGraphicsScene * scene,
+int AssemblyGraph::mergeAllPossible(PathfinderGraphicsScene * scene,
                                     MyProgressDialog * progressDialog)
 {
     //Create a set of all nodes.

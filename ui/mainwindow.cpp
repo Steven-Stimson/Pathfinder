@@ -1,17 +1,17 @@
-﻿//This file is part of Bandage
+﻿//This file is part of Pathfinder
 
-//Bandage is free software: you can redistribute it and/or modify
+//Pathfinder is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 
-//Bandage is distributed in the hope that it will be useful,
+//Pathfinder is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //GNU General Public License for more details.
 
 //You should have received a copy of the GNU General Public License
-//along with Bandage.  If not, see <http://www.gnu.org/licenses/>.
+//along with Pathfinder.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "mainwindow.h"
@@ -142,11 +142,11 @@ MainWindow::MainWindow(QString fileToLoadOnStartup, bool drawGraphAfterLoad) :
     m_graphicsViewZoom = new GraphicsViewZoom(g_graphicsView);
     g_graphicsView->m_zoom = m_graphicsViewZoom;
 
-    m_scene = new BandageGraphicsScene(this);
+    m_scene = new PathfinderGraphicsScene(this);
     g_graphicsView->setScene(m_scene);
 
     g_graphicsView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(g_graphicsView, &BandageGraphicsView::customContextMenuRequested,
+    connect(g_graphicsView, &PathfinderGraphicsView::customContextMenuRequested,
             this, &MainWindow::showContextMenu);
 
     //Nothing is selected yet, so this will hide the appropriate labels.
@@ -442,7 +442,7 @@ MainWindow::MainWindow(QString fileToLoadOnStartup, bool drawGraphAfterLoad) :
     connect(ui->actionSelect_contiguous_nodes, SIGNAL(triggered()), this, SLOT(selectContiguous()));
     connect(ui->actionSelect_possibly_contiguous_nodes, SIGNAL(triggered()), this, SLOT(selectMaybeContiguous()));
     connect(ui->actionSelect_not_contiguous_nodes, SIGNAL(triggered()), this, SLOT(selectNotContiguous()));
-    connect(ui->actionBandage_online_help, SIGNAL(triggered()), this, SLOT(openBandageUrl()));
+    connect(ui->actionPathfinder_online_help, SIGNAL(triggered()), this, SLOT(openPathfinderUrl()));
     connect(ui->nodeDistanceSpinBox, SIGNAL(valueChanged(int)), this, SLOT(nodeDistanceChanged()));
     connect(ui->minDepthSpinBox, SIGNAL(valueChanged(double)), this, SLOT(depthRangeChanged()));
     connect(ui->maxDepthSpinBox, SIGNAL(valueChanged(double)), this, SLOT(depthRangeChanged()));
@@ -536,7 +536,7 @@ void MainWindow::cleanUp() {
     }
 
     g_assemblyGraph->cleanUp();
-    setWindowTitle("BandagePro++");
+    setWindowTitle("Pathfinder");
 
     g_annotationsManager->cleanUp();
 
@@ -773,12 +773,12 @@ void MainWindow::loadGraph(QString fullFileName) {
                                          "This GFA file contains "
                                          "links with complex CIGAR strings (containing "
                                          "operators other than M).\n\n"
-                                         "Bandage does not support edge overlaps that are not "
+                                         "Pathfinder does not support edge overlaps that are not "
                                          "perfect, so the behaviour of such edges in this graph "
                                          "is undefined.");
 
                 setUiState(GRAPH_LOADED);
-                setWindowTitle("BandagePro++ - " + fullFileName);
+                setWindowTitle("Pathfinder - " + fullFileName);
 
                 g_assemblyGraph->determineGraphInfo();
                 displayGraphDetails();
@@ -811,8 +811,8 @@ void MainWindow::loadGraph(QString fullFileName) {
 
 void MainWindow::loadGraphLayout(QString fullFileName) {
     if (fullFileName.isEmpty())
-        fullFileName = QFileDialog::getOpenFileName(this, "Load Bandage layout", "",
-                                                    "Bandage layout (*.layout)");
+        fullFileName = QFileDialog::getOpenFileName(this, "Load Pathfinder layout", "",
+                                                    "Pathfinder layout (*.layout)");
 
     if (fullFileName.isEmpty())
         return; // user clicked on cancel
@@ -1523,7 +1523,7 @@ void MainWindow::resetScene() {
 
     g_graphicsView->setScene(nullptr);
     delete m_scene;
-    m_scene = new BandageGraphicsScene(this);
+    m_scene = new PathfinderGraphicsScene(this);
 
     g_graphicsView->setScene(m_scene);
     connect(m_scene, SIGNAL(selectionChanged()), this, SLOT(selectionChanged()));
@@ -2858,8 +2858,8 @@ void MainWindow::selectBasedOnContiguity(ContiguityStatus targetContiguityStatus
 }
 
 
-void MainWindow::openBandageUrl() {
-    QDesktopServices::openUrl(QUrl("https://github.com/asl/BandageProPP/wiki"));
+void MainWindow::openPathfinderUrl() {
+    QDesktopServices::openUrl(QUrl("https://github.com/asl/PathfinderPP/wiki"));
 }
 
 
@@ -2969,7 +2969,7 @@ void MainWindow::saveEntireGraphToFasta() {
 
     g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
     if (!utils::saveEntireGraphToFasta(fullFileName, *g_assemblyGraph))
-        QMessageBox::warning(this, "Error saving file", "Bandage was unable to save the FASTA file.");
+        QMessageBox::warning(this, "Error saving file", "Pathfinder was unable to save the FASTA file.");
 }
 
 void MainWindow::saveEntireGraphToFastaOnlyPositiveNodes() {
@@ -2982,7 +2982,7 @@ void MainWindow::saveEntireGraphToFastaOnlyPositiveNodes() {
 
     g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
     if (!utils::saveEntireGraphToFastaOnlyPositiveNodes(fullFileName, *g_assemblyGraph))
-        QMessageBox::warning(this, "Error saving file", "Bandage was unable to save the FASTA file.");
+        QMessageBox::warning(this, "Error saving file", "Pathfinder was unable to save the FASTA file.");
 }
 
 
@@ -2996,7 +2996,7 @@ void MainWindow::saveEntireGraphToGfa() {
 
     g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
     if (!gfa::saveEntireGraph(fullFileName, *g_assemblyGraph))
-        QMessageBox::warning(this, "Error saving file", "Bandage was unable to save the graph file.");
+        QMessageBox::warning(this, "Error saving file", "Pathfinder was unable to save the graph file.");
 }
 
 void MainWindow::saveVisibleGraphToGfa() {
@@ -3009,7 +3009,7 @@ void MainWindow::saveVisibleGraphToGfa() {
 
     g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
     if (!gfa::saveVisibleGraph(fullFileName, *g_assemblyGraph))
-        QMessageBox::warning(this, "Error saving file", "Bandage was unable to save the graph file.");
+        QMessageBox::warning(this, "Error saving file", "Pathfinder was unable to save the graph file.");
 }
 
 
@@ -3037,7 +3037,7 @@ void MainWindow::webBlastSelectedNodes()
     else
     {
         QMessageBox::information(this, "Long sequences", "The selected node sequences are too long to pass to the BLAST web "
-                                                         "interface via the URL.  Bandage has put them in your clipboard so "
+                                                         "interface via the URL.  Pathfinder has put them in your clipboard so "
                                                          "you can paste them in.");
         QClipboard * clipboard = QApplication::clipboard();
         clipboard->setText(selectedNodesFasta);
@@ -3416,10 +3416,10 @@ void MainWindow::setBackgroundColour() {
 }
 
 void MainWindow::exportGraphLayout() {
-    QString filter = "Bandage layout (*.layout)";
+    QString filter = "Pathfinder layout (*.layout)";
     QString fullFileName = QFileDialog::getSaveFileName(this, "Export graph layout",
                                                         "",
-                                                        "Bandage layout (*.layout);;TSV (*.tsv)",
+                                                        "Pathfinder layout (*.layout);;TSV (*.tsv)",
                                                         &filter);
 
     if (fullFileName.isEmpty())
