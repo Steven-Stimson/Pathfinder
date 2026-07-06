@@ -121,19 +121,12 @@ jobs:
         # Xcode 26 / macOS 26 removed AGL.framework. Qt 6.7 still references it,
         # so we create an empty stub to satisfy the linker.
         run: |
-          AGL_DIR="${{github.workspace}}/build/agl-stub/AGL.framework"
+          AGL_DIR="${{github.workspace}}/build/agl-stub/AGL.framework/Versions/A"
           mkdir -p "$AGL_DIR"
-          cat > "$AGL_DIR/AGL.tbd" << 'EOF'
-          --- !tbd-v4
-          targets: [ arm64-macos, x86_64-macos ]
-          uuids: [ arm64-macos: 00000000-0000-0000-0000-000000000001, x86_64-macos: 00000000-0000-0000-0000-000000000002 ]
-          install-name: '/System/Library/Frameworks/AGL.framework/AGL'
-          current-version: 1
-          compatibility-version: 1
-          exports:
-            - targets: [ arm64-macos, x86_64-macos ]
-              symbols: [ ]
-          EOF
+          # Create an empty C file and compile into a stub dylib
+          echo "void agl_stub(void) {}" > /tmp/agl_stub.c
+          cc -arch arm64 -dynamiclib -install_name @rpath/AGL.framework/AGL -o "$AGL_DIR/AGL" /tmp/agl_stub.c
+          ln -sf Versions/A/AGL "${{github.workspace}}/build/agl-stub/AGL.framework/AGL"
 
       - name: '⚙️ Configure CMake'
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_FRAMEWORK_PATH="${{github.workspace}}/build/agl-stub" -G Ninja
