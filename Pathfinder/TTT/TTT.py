@@ -162,10 +162,14 @@ def parse_arguments():
     return args
 
 def main():
-    # When running as a PyInstaller bundle, add the extraction directory to PATH
-    # so that pulp can find the bundled glpsol binary
+    # When running as a PyInstaller bundle, configure paths for bundled glpsol
     if hasattr(sys, '_MEIPASS'):
         os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
+        # Also set GLPK_CMD for pulp's GLPK solver
+        glpsol_name = 'glpsol.exe' if sys.platform == 'win32' else 'glpsol'
+        glpsol_path = os.path.join(sys._MEIPASS, glpsol_name)
+        if os.path.exists(glpsol_path):
+            os.environ['GLPK_CMD'] = glpsol_path
 
     args = parse_arguments()
     os.makedirs(args.outdir, exist_ok=True)

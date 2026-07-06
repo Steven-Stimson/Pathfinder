@@ -42,7 +42,7 @@ jobs:
 
       - name: '⚙️ Build TTT standalone binary'
         run: |
-          cd ${{github.workspace}}/thirdparty/TTT
+          cd ${{github.workspace}}/Pathfinder/TTT
           pip3 install -r requirements.txt pyinstaller
           cp $(which glpsol) .
           pyinstaller --onefile --name ttt --add-data "glpsol:." TTT.py
@@ -59,9 +59,9 @@ jobs:
         working-directory: ${{github.workspace}}/build
         run: |
           DESTDIR=AppDir cmake --install ${{github.workspace}}/build
-          mkdir -p AppDir/usr/thirdparty/TTT
-          cp ../thirdparty/TTT/ttt AppDir/usr/thirdparty/TTT/
-          cp ../thirdparty/TTT/glpsol AppDir/usr/thirdparty/TTT/
+          mkdir -p AppDir/usr/Pathfinder/TTT
+          cp ../Pathfinder/TTT/ttt AppDir/usr/Pathfinder/TTT/
+          cp ../Pathfinder/TTT/glpsol AppDir/usr/Pathfinder/TTT/
 
       - name: '⚙️ Install Linuxdeploy'
         working-directory: ${{github.workspace}}/build
@@ -110,7 +110,7 @@ jobs:
       - name: '⚙️ Build TTT standalone binary'
         run: |
           brew install glpk
-          cd ${{github.workspace}}/thirdparty/TTT
+          cd ${{github.workspace}}/Pathfinder/TTT
           pip3 install -r requirements.txt pyinstaller
           cp $(which glpsol) .
           pyinstaller --onefile --name ttt --add-data "glpsol:." TTT.py
@@ -130,9 +130,9 @@ jobs:
       - name: '📦 Make DMG'
         working-directory: ${{github.workspace}}/build
         run: |
-          mkdir -p BandagePro++.app/Contents/thirdparty/TTT
-          cp ../thirdparty/TTT/ttt BandagePro++.app/Contents/thirdparty/TTT/
-          cp ../thirdparty/TTT/glpsol BandagePro++.app/Contents/thirdparty/TTT/
+          mkdir -p BandagePro++.app/Contents/Pathfinder/TTT
+          cp ../Pathfinder/TTT/ttt BandagePro++.app/Contents/Pathfinder/TTT/
+          cp ../Pathfinder/TTT/glpsol BandagePro++.app/Contents/Pathfinder/TTT/
           macdeployqt BandagePro++.app -dmg
           mv *.dmg BandageProPP-macOS-${{steps.commit.outputs.short}}.dmg
 
@@ -175,7 +175,7 @@ jobs:
 
       - name: '⚙️ Build TTT standalone binary'
         shell: bash
-        working-directory: thirdparty/TTT
+        working-directory: Pathfinder/TTT
         run: |
           pip install -r requirements.txt pyinstaller
           # Find glpsol.exe from chocolatey install
@@ -195,10 +195,10 @@ jobs:
       - name: '📦 Make package'
         working-directory: ${{github.workspace}}/build
         run: |
-          mkdir -p BandageProPP/thirdparty/TTT
+          mkdir -p BandageProPP/Pathfinder/TTT
           cp BandagePro++.exe BandageProPP/
-          cp ../thirdparty/TTT/ttt.exe BandageProPP/thirdparty/TTT/
-          cp ../thirdparty/TTT/glpsol.exe BandageProPP/thirdparty/TTT/
+          cp ../Pathfinder/TTT/ttt.exe BandageProPP/Pathfinder/TTT/
+          cp ../Pathfinder/TTT/glpsol.exe BandageProPP/Pathfinder/TTT/
           windeployqt BandageProPP --release --compiler-runtime
           7z a BandageProPP-win-${{steps.commit.outputs.short}}.zip BandageProPP -r
 

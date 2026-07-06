@@ -214,13 +214,13 @@ else()
     set(GLPSOL_BINARY_NAME "glpsol")
 endif()
 add_custom_command(TARGET BandageProPP POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BandageProPP>/../thirdparty/TTT"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BandageProPP>/../Pathfinder/TTT"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/TTT/${TTT_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:BandageProPP>/../thirdparty/TTT/${TTT_BINARY_NAME}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${TTT_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:BandageProPP>/../Pathfinder/TTT/${TTT_BINARY_NAME}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/TTT/${GLPSOL_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:BandageProPP>/../thirdparty/TTT/${GLPSOL_BINARY_NAME}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:BandageProPP>/../Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
 )
 
 add_subdirectory(resources)

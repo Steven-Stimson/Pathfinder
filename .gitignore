@@ -66,11 +66,11 @@ Bandage.app
 build
 
 # PyInstaller build artifacts
-thirdparty/TTT/build/
-thirdparty/TTT/dist/
-thirdparty/TTT/*.spec
-thirdparty/TTT/__pycache__/
-thirdparty/TTT/ttt.bak
+Pathfinder/TTT/build/
+Pathfinder/TTT/dist/
+Pathfinder/TTT/*.spec
+Pathfinder/TTT/__pycache__/
+Pathfinder/TTT/ttt.bak
 *.pyc
 
 # Misc

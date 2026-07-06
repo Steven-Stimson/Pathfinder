@@ -39,11 +39,11 @@ TTTDialog::TTTDialog(QWidget *parent)
 #endif
         QStringList searchPaths = {
             // Packaged app: TTT next to the executable
-            QCoreApplication::applicationDirPath() + "/thirdparty/TTT/" + binName,
+            QCoreApplication::applicationDirPath() + "/Pathfinder/TTT/" + binName,
             // Build tree / AppImage: one level up
-            QCoreApplication::applicationDirPath() + "/../thirdparty/TTT/" + binName,
-            // macOS .app bundle: Contents/MacOS -> Contents/thirdparty/TTT
-            QCoreApplication::applicationDirPath() + "/../../thirdparty/TTT/" + binName,
+            QCoreApplication::applicationDirPath() + "/../Pathfinder/TTT/" + binName,
+            // macOS .app bundle: Contents/MacOS -> Contents/Pathfinder/TTT
+            QCoreApplication::applicationDirPath() + "/../../Pathfinder/TTT/" + binName,
         };
         for (const auto &p : searchPaths) {
             QString absPath = QFileInfo(p).absoluteFilePath();
@@ -285,7 +285,7 @@ void TTTDialog::runTTT()
     m_process = new QProcess(this);
     m_process->setWorkingDirectory(m_outputDir);
 
-    // Add thirdparty/TTT to PATH so the ttt binary can find glpsol
+    // Add Pathfinder/TTT to PATH so the ttt binary can find glpsol
     auto env = QProcessEnvironment::systemEnvironment();
     QString tttDir = QFileInfo(m_tttBinaryPath).absolutePath();
     QString currentPath = env.value("PATH");
