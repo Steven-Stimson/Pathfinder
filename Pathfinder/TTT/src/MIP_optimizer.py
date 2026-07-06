@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 import pulp
 import networkx as nx
 from .logging_utils import log_assert
@@ -110,7 +112,14 @@ class MIPOptimizer:
             # MIP magic
             pulp.LpSolverDefault.msg = 1
             # by default no more than 1 hour
-            prob.solve(pulp.GLPK(timeLimit=self.time_limit))
+            # When running as PyInstaller bundle, pass the glpsol path explicitly
+            glpk_kwargs = {"timeLimit": self.time_limit}
+            if hasattr(sys, '_MEIPASS'):
+                glpsol_name = 'glpsol.exe' if sys.platform == 'win32' else 'glpsol'
+                glpsol_path = os.path.join(sys._MEIPASS, glpsol_name)
+                if os.path.exists(glpsol_path):
+                    glpk_kwargs["path"] = glpsol_path
+            prob.solve(pulp.GLPK(**glpk_kwargs))
             
             result = {}    
             

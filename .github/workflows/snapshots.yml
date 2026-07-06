@@ -207,13 +207,12 @@ jobs:
           cp ../Pathfinder/TTT/ttt.exe BandageProPP/Pathfinder/TTT/
           cp ../Pathfinder/TTT/glpsol.exe BandageProPP/Pathfinder/TTT/
           windeployqt BandageProPP --release --compiler-runtime
-          cd BandageProPP && 7z a ../BandageProPP-win-${{steps.commit.outputs.short}}.zip .
 
-      - name: '📤 Upload artifact: ZIP'
+      - name: '📤 Upload artifact'
         uses: actions/upload-artifact@v4
         with:
           name: BandageProPP-win-${{steps.commit.outputs.short}}
-          path: ${{github.workspace}}/build/BandageProPP-win-*.zip
+          path: ${{github.workspace}}/build/BandageProPP
 
   # Upload continuous build
   upload:
