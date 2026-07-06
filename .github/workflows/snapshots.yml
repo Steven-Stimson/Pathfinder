@@ -57,7 +57,11 @@ jobs:
 
       - name: '⚙️ Make AppDir'
         working-directory: ${{github.workspace}}/build
-        run: DESTDIR=AppDir cmake --install ${{github.workspace}}/build
+        run: |
+          DESTDIR=AppDir cmake --install ${{github.workspace}}/build
+          mkdir -p AppDir/usr/thirdparty/TTT
+          cp ../thirdparty/TTT/ttt AppDir/usr/thirdparty/TTT/
+          cp ../thirdparty/TTT/glpsol AppDir/usr/thirdparty/TTT/
 
       - name: '⚙️ Install Linuxdeploy'
         working-directory: ${{github.workspace}}/build
@@ -126,6 +130,9 @@ jobs:
       - name: '📦 Make DMG'
         working-directory: ${{github.workspace}}/build
         run: |
+          mkdir -p BandagePro++.app/Contents/thirdparty/TTT
+          cp ../thirdparty/TTT/ttt BandagePro++.app/Contents/thirdparty/TTT/
+          cp ../thirdparty/TTT/glpsol BandagePro++.app/Contents/thirdparty/TTT/
           macdeployqt BandagePro++.app -dmg
           mv *.dmg BandageProPP-macOS-${{steps.commit.outputs.short}}.dmg
 
@@ -188,8 +195,10 @@ jobs:
       - name: '📦 Make package'
         working-directory: ${{github.workspace}}/build
         run: |
-          mkdir BandageProPP
+          mkdir -p BandageProPP/thirdparty/TTT
           cp BandagePro++.exe BandageProPP/
+          cp ../thirdparty/TTT/ttt.exe BandageProPP/thirdparty/TTT/
+          cp ../thirdparty/TTT/glpsol.exe BandageProPP/thirdparty/TTT/
           windeployqt BandageProPP --release --compiler-runtime
           7z a BandageProPP-win-${{steps.commit.outputs.short}}.zip BandageProPP -r
 

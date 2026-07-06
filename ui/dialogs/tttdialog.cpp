@@ -33,13 +33,17 @@ TTTDialog::TTTDialog(QWidget *parent)
 
     // Auto-detect the embedded ttt binary
     if (m_tttBinaryPath.isEmpty()) {
-        QStringList searchPaths = {
-            QCoreApplication::applicationDirPath() + "/../thirdparty/TTT/ttt",
-            QCoreApplication::applicationDirPath() + "/../../thirdparty/TTT/ttt",
+        QString binName = "ttt";
 #ifdef Q_OS_WIN
-            QCoreApplication::applicationDirPath() + "/../thirdparty/TTT/ttt.exe",
-            QCoreApplication::applicationDirPath() + "/../../thirdparty/TTT/ttt.exe",
+        binName = "ttt.exe";
 #endif
+        QStringList searchPaths = {
+            // Packaged app: TTT next to the executable
+            QCoreApplication::applicationDirPath() + "/thirdparty/TTT/" + binName,
+            // Build tree / AppImage: one level up
+            QCoreApplication::applicationDirPath() + "/../thirdparty/TTT/" + binName,
+            // macOS .app bundle: Contents/MacOS -> Contents/thirdparty/TTT
+            QCoreApplication::applicationDirPath() + "/../../thirdparty/TTT/" + binName,
         };
         for (const auto &p : searchPaths) {
             QString absPath = QFileInfo(p).absoluteFilePath();
