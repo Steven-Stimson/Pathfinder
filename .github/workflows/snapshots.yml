@@ -207,12 +207,13 @@ jobs:
           cp ../Pathfinder/TTT/ttt.exe BandageProPP/Pathfinder/TTT/
           cp ../Pathfinder/TTT/glpsol.exe BandageProPP/Pathfinder/TTT/
           windeployqt BandageProPP --release --compiler-runtime
+          cd BandageProPP && 7z a ../BandageProPP-win-${{steps.commit.outputs.short}}.zip .
 
       - name: '📤 Upload artifact'
         uses: actions/upload-artifact@v4
         with:
           name: BandageProPP-win-${{steps.commit.outputs.short}}
-          path: ${{github.workspace}}/build/BandageProPP
+          path: ${{github.workspace}}/build/BandageProPP-win-*.zip
 
   # Upload continuous build
   upload:
@@ -231,17 +232,6 @@ jobs:
         uses: actions/download-artifact@v4
       - name: '🗂 Inspect directory after downloading artifacts'
         run: ls -alFR
-      - name: '📦 Re-zip Windows artifact'
-        run: |
-          ls -la
-          WIN_DIR=$(ls -d BandageProPP-win-* 2>/dev/null | head -1)
-          if [ -d "$WIN_DIR" ]; then
-            cd "$WIN_DIR"
-            7z a ../BandageProPP-win.zip .
-            cd ..
-          fi
-          ls -la *.zip 2>/dev/null || echo "No zip files found"
-
       - name: '🚀 Create release and upload artifacts'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -250,4 +240,4 @@ jobs:
             chmod +x pyuploadtool-x86_64.AppImage
             ./pyuploadtool-x86_64.AppImage **/BandageProPP-Linux-*.AppImage
             ./pyuploadtool-x86_64.AppImage **/BandageProPP-macOS-*.dmg
-            ./pyuploadtool-x86_64.AppImage **/BandageProPP-win.zip
+            ./pyuploadtool-x86_64.AppImage **/BandageProPP-win-*.zip
