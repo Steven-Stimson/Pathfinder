@@ -117,12 +117,26 @@ jobs:
           cp dist/ttt ttt
           chmod +x ttt
 
+      - name: '⚙️ Create stub AGL framework'
+        # Xcode 26 / macOS 26 removed AGL.framework. Qt 6.7 still references it,
+        # so we create an empty stub to satisfy the linker.
+        run: |
+          AGL_DIR="${{github.workspace}}/build/agl-stub/AGL.framework"
+          mkdir -p "$AGL_DIR"
+          cat > "$AGL_DIR/AGL.tbd" << 'EOF'
+          --- !tbd-v4
+          targets: [ arm64-macos, x86_64-macos ]
+          uuids: [ arm64-macos: 00000000-0000-0000-0000-000000000001, x86_64-macos: 00000000-0000-0000-0000-000000000002 ]
+          install-name: '/System/Library/Frameworks/AGL.framework/AGL'
+          current-version: 1
+          compatibility-version: 1
+          exports:
+            - targets: [ arm64-macos, x86_64-macos ]
+              symbols: [ ]
+          EOF
+
       - name: '⚙️ Configure CMake'
-        # Build arm64 only: the Qt 6.7.3 x86_64 slice links the deprecated AGL
-        # framework, which is not present on macOS 26 / Xcode 26 runners. AGL is
-        # also stripped from the link line in CMakeLists.txt so the arm64 build
-        # can link successfully.
-        run:  cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_INSTALL_PREFIX=/usr -G Ninja
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_FRAMEWORK_PATH="${{github.workspace}}/build/agl-stub" -G Ninja
 
       - name: '🚧 Build'
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
@@ -200,13 +214,13 @@ jobs:
           cp ../Pathfinder/TTT/ttt.exe BandageProPP/Pathfinder/TTT/
           cp ../Pathfinder/TTT/glpsol.exe BandageProPP/Pathfinder/TTT/
           windeployqt BandageProPP --release --compiler-runtime
-          7z a BandageProPP-win-${{steps.commit.outputs.short}}.zip BandageProPP -r
+          cd BandageProPP && 7z a ../BandageProPP-win-${{steps.commit.outputs.short}}.zip .
 
       - name: '📤 Upload artifact: ZIP'
         uses: actions/upload-artifact@v4
         with:
-          name: BandageProPP-win-${{steps.commit.outputs.short}}.zip
-          path: ${{github.workspace}}/build/BandageProPP*.zip
+          name: BandageProPP-win-${{steps.commit.outputs.short}}
+          path: ${{github.workspace}}/build/BandageProPP-win-*.zip
 
   # Upload continuous build
   upload:
