@@ -1179,6 +1179,16 @@ then colour which other nodes in the graph are likely to be contiguous
                 </property>
                </widget>
               </item>
+              <item row="5" column="1" colspan="2">
+               <widget class="QPushButton" name="setBackgroundColourButton">
+                <property name="focusPolicy">
+                 <enum>Qt::StrongFocus</enum>
+                </property>
+                <property name="text">
+                 <string>Set background colour</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
            </item>
@@ -2798,6 +2808,7 @@ then colour which other nodes in the graph are likely to be contiguous
     <addaction name="actionDuplicate_selected_nodes"/>
     <addaction name="actionMerge_selected_nodes"/>
     <addaction name="actionMerge_all_possible_nodes"/>
+    <addaction name="actionLink_two_nodes"/>
     <addaction name="separator"/>
     <addaction name="actionChange_node_name"/>
     <addaction name="actionChange_node_depth"/>
@@ -3188,6 +3199,14 @@ then colour which other nodes in the graph are likely to be contiguous
    </property>
    <property name="shortcut">
     <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionLink_two_nodes">
+   <property name="text">
+    <string>Link 2 nodes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
    </property>
   </action>
   <action name="actionPathfinder_TTT">

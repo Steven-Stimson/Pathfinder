@@ -72,6 +72,7 @@ signals:
     void copySelectedSequencesToClipboard();
     void saveSelectedSequencesToFile();
     void rotationFinished();
+    void linkModeNodeClicked(DeBruijnNode * node, bool isTail);
 };
 
 #endif // MYGRAPHICSVIEW_H

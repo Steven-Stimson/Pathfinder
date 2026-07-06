@@ -19,6 +19,7 @@
 #include "bandagegraphicsview.h"
 #include "bandagegraphicsscene.h"
 #include "graph/graphicsitemnode.h"
+#include "graph/debruijnnode.h"
 #include "program/globals.h"
 #include "program/settings.h"
 #include "graphicsviewzoom.h"
@@ -64,6 +65,32 @@ void BandageGraphicsView::mousePressEvent(QMouseEvent * event)
     if (g_rotationMode && event->button() == Qt::LeftButton) {
         m_previousPos = event->pos();
         // Do NOT pass to QGraphicsView — we handle rotation ourselves
+        return;
+    }
+
+    // In link mode, capture left button for node endpoint selection
+    if (g_linkMode && event->button() == Qt::LeftButton) {
+        qDebug() << "Link mode: mouse press detected";
+        m_previousPos = event->pos();
+        // Find the clicked node and determine head/tail
+        QPointF scenePos = mapToScene(event->pos());
+        QGraphicsItem *item = scene()->itemAt(scenePos, transform());
+        GraphicsItemNode *gin = dynamic_cast<GraphicsItemNode *>(item);
+        if (gin) {
+            DeBruijnNode *node = gin->m_deBruijnNode;
+            qDebug() << "Clicked node:" << node->getName();
+            // Determine if click is closer to head (start) or tail (end)
+            QPointF first = gin->getFirst();
+            QPointF last = gin->getLast();
+            double distToFirst = distance(scenePos.x(), scenePos.y(), first.x(), first.y());
+            double distToLast = distance(scenePos.x(), scenePos.y(), last.x(), last.y());
+            bool isTail = (distToLast < distToFirst);
+            qDebug() << "isTail =" << isTail;
+            emit linkModeNodeClicked(node, isTail);
+        } else {
+            qDebug() << "No node clicked";
+        }
+        // Do NOT pass to QGraphicsView — we handle link mode ourselves
         return;
     }
 

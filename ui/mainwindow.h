@@ -81,6 +81,16 @@ private:
     QPointF m_rotationStartPos;
     QByteArray m_rotationBeforeState;
 
+    // Link mode state
+    bool m_linkMode = false;
+    int m_linkStep = 0;  // 0: not started, 1: waiting for first click, 2: waiting for second click
+    DeBruijnNode* m_linkNode1 = nullptr;
+    bool m_linkNode1IsTail = false;  // true if tail was clicked, false if head
+    DeBruijnNode* m_linkNode2 = nullptr;
+    bool m_linkNode2IsTail = false;
+    QGraphicsEllipseItem* m_linkMarker1 = nullptr;
+    QGraphicsEllipseItem* m_linkMarker2 = nullptr;
+
     // Edge cap style combo box (added dynamically in constructor)
     QComboBox * m_edgeCapStyleComboBox;
     QLabel * m_edgeCapStyleLabel;
@@ -205,6 +215,10 @@ private slots:
     void openGraphInfoDialog();
     void exportGraphLayout();
     void openTTTDialog();
+    void linkTwoNodes();
+    void resetLinkMode();
+    void onLinkModeNodeClicked(DeBruijnNode * node, bool isTail);
+    void setBackgroundColour();
     void showContextMenu(QPoint pos);
 
 protected:

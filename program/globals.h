@@ -49,6 +49,7 @@ extern QUndoStack * g_undoStack;
 extern bool g_rotationMode;
 extern QPointF g_rotationCenter;
 extern QPointF g_rotationStartPos;
+extern bool g_linkMode;
 
 
 //Functions for formatting numbers are used in many places, and are made global.

@@ -32,6 +32,7 @@ QUndoStack * g_undoStack = nullptr;
 bool g_rotationMode = false;
 QPointF g_rotationCenter;
 QPointF g_rotationStartPos;
+bool g_linkMode = false;
 
 
 QString formatIntForDisplay(int num) {

@@ -452,6 +452,7 @@ MainWindow::MainWindow(QString fileToLoadOnStartup, bool drawGraphAfterLoad) :
     connect(g_graphicsView, SIGNAL(copySelectedSequencesToClipboard()), this, SLOT(copySelectedSequencesToClipboard()));
     connect(g_graphicsView, SIGNAL(saveSelectedSequencesToFile()), this, SLOT(saveSelectedSequencesToFile()));
     connect(g_graphicsView, SIGNAL(rotationFinished()), this, SLOT(onRotationFinished()));
+    connect(g_graphicsView, SIGNAL(linkModeNodeClicked(DeBruijnNode*,bool)), this, SLOT(onLinkModeNodeClicked(DeBruijnNode*,bool)));
     connect(ui->actionSave_entire_graph_to_FASTA, SIGNAL(triggered(bool)), this, SLOT(saveEntireGraphToFasta()));
     connect(ui->actionSave_entire_graph_to_FASTA_only_positive_nodes, SIGNAL(triggered(bool)), this, SLOT(saveEntireGraphToFastaOnlyPositiveNodes()));
     connect(ui->actionSave_entire_graph_to_GFA, SIGNAL(triggered(bool)), this, SLOT(saveEntireGraphToGfa()));
@@ -465,6 +466,8 @@ MainWindow::MainWindow(QString fileToLoadOnStartup, bool drawGraphAfterLoad) :
     connect(ui->actionChange_node_name, SIGNAL(triggered(bool)), this, SLOT(changeNodeName()));
     connect(ui->actionChange_node_depth, SIGNAL(triggered(bool)), this, SLOT(changeNodeDepth()));
     connect(ui->actionRotate_nodes, SIGNAL(triggered(bool)), this, SLOT(rotateSelectedNodes()));
+    connect(ui->actionLink_two_nodes, SIGNAL(triggered(bool)), this, SLOT(linkTwoNodes()));
+    connect(ui->setBackgroundColourButton, SIGNAL(clicked()), this, SLOT(setBackgroundColour()));
     connect(ui->actionPathfinder_TTT, SIGNAL(triggered()), this, SLOT(openTTTDialog()));
     connect(ui->moreInfoButton, SIGNAL(clicked(bool)), this, SLOT(openGraphInfoDialog()));
 
@@ -3304,6 +3307,112 @@ void MainWindow::openTTTDialog()
             loadGraph(dialog->outputGfaPath());
     });
     dialog->show();
+}
+
+void MainWindow::linkTwoNodes()
+{
+    if (m_linkMode) {
+        resetLinkMode();
+        return;
+    }
+
+    m_linkMode = true;
+    g_linkMode = true;
+    m_linkStep = 1;
+    m_linkNode1 = nullptr;
+    m_linkNode2 = nullptr;
+
+    statusBar()->showMessage("🔗 Link mode: Click on the head or tail of the first node");
+}
+
+void MainWindow::resetLinkMode()
+{
+    m_linkMode = false;
+    g_linkMode = false;
+    m_linkStep = 0;
+    m_linkNode1 = nullptr;
+    m_linkNode2 = nullptr;
+
+    if (m_linkMarker1) {
+        m_scene->removeItem(m_linkMarker1);
+        delete m_linkMarker1;
+        m_linkMarker1 = nullptr;
+    }
+    if (m_linkMarker2) {
+        m_scene->removeItem(m_linkMarker2);
+        delete m_linkMarker2;
+        m_linkMarker2 = nullptr;
+    }
+
+    statusBar()->clearMessage();
+}
+
+void MainWindow::onLinkModeNodeClicked(DeBruijnNode * node, bool isTail)
+{
+    if (!m_linkMode || !node)
+        return;
+
+    if (m_linkStep == 1) {
+        m_linkNode1 = node;
+        m_linkNode1IsTail = isTail;
+        m_linkStep = 2;
+
+        m_scene->clearSelection();
+        auto gin = node->getGraphicsItemNode();
+        if (gin) {
+            gin->setSelected(true);
+        }
+
+        QString endType = isTail ? "tail" : "head";
+        statusBar()->showMessage(QString("✓ First node: %1 (%2). Now click on the head or tail of the second node")
+                                 .arg(node->getNameWithoutSign()).arg(endType));
+    } else if (m_linkStep == 2) {
+        m_linkNode2 = node;
+        m_linkNode2IsTail = isTail;
+
+        QString node1Name, node2Name;
+
+        if (m_linkNode1IsTail) {
+            node1Name = m_linkNode1->getNameWithoutSign() + "+";
+        } else {
+            node1Name = m_linkNode1->getNameWithoutSign() + "-";
+        }
+
+        if (m_linkNode2IsTail) {
+            node2Name = m_linkNode2->getNameWithoutSign() + "-";
+        } else {
+            node2Name = m_linkNode2->getNameWithoutSign() + "+";
+        }
+
+        QByteArray before = captureGraphState();
+
+        g_assemblyGraph->createDeBruijnEdge(node1Name, node2Name, 0, EXACT_OVERLAP);
+
+        pushGraphStateCommand(before, captureGraphState());
+
+        g_assemblyGraph->determineGraphInfo();
+        displayGraphDetails();
+
+        drawGraph();
+
+        QString endType1 = m_linkNode1IsTail ? "tail" : "head";
+        QString endType2 = m_linkNode2IsTail ? "tail" : "head";
+        statusBar()->showMessage(QString("✓ Created edge: %1 (%2) → %3 (%4)")
+                                 .arg(m_linkNode1->getNameWithoutSign()).arg(endType1)
+                                 .arg(m_linkNode2->getNameWithoutSign()).arg(endType2), 5000);
+
+        resetLinkMode();
+    }
+}
+
+void MainWindow::setBackgroundColour() {
+    QColor currentColour = g_graphicsView->backgroundBrush().color();
+    QColor newColour = QColorDialog::getColor(currentColour, this, "Select background colour");
+
+    if (!newColour.isValid())
+        return;
+
+    g_graphicsView->setBackgroundBrush(QBrush(newColour));
 }
 
 void MainWindow::exportGraphLayout() {
