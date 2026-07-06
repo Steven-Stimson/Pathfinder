@@ -42,10 +42,16 @@ jobs:
 
       - name: '⚙️ Build TTT standalone binary'
         run: |
+          sudo apt-get install -y glpk-utils
           cd ${{github.workspace}}/Pathfinder/TTT
           pip3 install -r requirements.txt pyinstaller
           cp $(which glpsol) .
-          pyinstaller --onefile --name ttt --add-data "glpsol:." TTT.py
+          PULP_DIR=$(python3 -c "import pulp, os; print(os.path.dirname(pulp.__file__))")
+          pyinstaller --onefile --name ttt \
+            --add-data "glpsol:." \
+            --add-data "${PULP_DIR}/solverdir:pulp/solverdir" \
+            --collect-data pulp \
+            TTT.py
           cp dist/ttt ttt
           chmod +x ttt
 
@@ -113,7 +119,12 @@ jobs:
           cd ${{github.workspace}}/Pathfinder/TTT
           pip3 install -r requirements.txt pyinstaller
           cp $(which glpsol) .
-          pyinstaller --onefile --name ttt --add-data "glpsol:." TTT.py
+          PULP_DIR=$(python3 -c "import pulp, os; print(os.path.dirname(pulp.__file__))")
+          pyinstaller --onefile --name ttt \
+            --add-data "glpsol:." \
+            --add-data "${PULP_DIR}/solverdir:pulp/solverdir" \
+            --collect-data pulp \
+            TTT.py
           cp dist/ttt ttt
           chmod +x ttt
 
@@ -190,7 +201,13 @@ jobs:
           cp "/c/ProgramData/chocolatey/bin/glpsol.exe" . 2>/dev/null || \
           which glpsol && cp "$(which glpsol)" . || \
           (echo "ERROR: glpsol.exe not found" && exit 1)
-          pyinstaller --onefile --name ttt --add-data "glpsol.exe;." TTT.py
+          # Find pulp solver directory and bundle it
+          PULP_DIR=$(python -c "import pulp, os; print(os.path.dirname(pulp.__file__))")
+          pyinstaller --onefile --name ttt \
+            --add-data "glpsol.exe;." \
+            --add-data "${PULP_DIR}/solverdir;pulp/solverdir" \
+            --collect-data pulp \
+            TTT.py
           cp dist/ttt.exe ttt.exe
 
       - name: '⚙️ Configure CMake'
