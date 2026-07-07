@@ -2859,7 +2859,7 @@ void MainWindow::selectBasedOnContiguity(ContiguityStatus targetContiguityStatus
 
 
 void MainWindow::openPathfinderUrl() {
-    QDesktopServices::openUrl(QUrl("https://github.com/asl/PathfinderPP/wiki"));
+    QDesktopServices::openUrl(QUrl("https://github.com/asl/Pathfinder/wiki"));
 }
 
 

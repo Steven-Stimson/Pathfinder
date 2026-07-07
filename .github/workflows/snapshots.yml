@@ -82,14 +82,14 @@ jobs:
           export EXTRA_PLATFORM_PLUGINS="libqoffscreen.so;libqminimal.so"
 
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
-          mv Pathfinder*.AppImage PathfinderPP-Linux-${{steps.commit.outputs.short}}.AppImage
+          mv Pathfinder*.AppImage Pathfinder-Linux-${{steps.commit.outputs.short}}.AppImage
         shell: bash
 
       - name: '📤 Upload artifact: AppImage'
         uses: actions/upload-artifact@v4
         with:
-          name: PathfinderPP-Linux-${{steps.commit.outputs.short}}.AppImage
-          path: ${{github.workspace}}/build/PathfinderPP-Linux-*.AppImage
+          name: Pathfinder-Linux-${{steps.commit.outputs.short}}.AppImage
+          path: ${{github.workspace}}/build/Pathfinder-Linux-*.AppImage
 
   build-mac:
     runs-on: macos-latest
@@ -152,13 +152,13 @@ jobs:
           cp ../Pathfinder/TTT/ttt Pathfinder.app/Contents/Pathfinder/TTT/
           cp ../Pathfinder/TTT/glpsol Pathfinder.app/Contents/Pathfinder/TTT/
           macdeployqt Pathfinder.app -dmg
-          mv *.dmg PathfinderPP-macOS-${{steps.commit.outputs.short}}.dmg
+          mv *.dmg Pathfinder-macOS-${{steps.commit.outputs.short}}.dmg
 
       - name: '📤 Upload artifact: DMG'
         uses: actions/upload-artifact@v4
         with:
-          name: PathfinderPP-macOS-${{steps.commit.outputs.short}}.dmg
-          path: ${{github.workspace}}/build/PathfinderPP-macOS-*.dmg
+          name: Pathfinder-macOS-${{steps.commit.outputs.short}}.dmg
+          path: ${{github.workspace}}/build/Pathfinder-macOS-*.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -219,18 +219,18 @@ jobs:
       - name: '📦 Make package'
         working-directory: ${{github.workspace}}/build
         run: |
-          mkdir -p PathfinderPP/Pathfinder/TTT
-          cp Pathfinder.exe PathfinderPP/
-          cp ../Pathfinder/TTT/ttt.exe PathfinderPP/Pathfinder/TTT/
-          cp ../Pathfinder/TTT/glpsol.exe PathfinderPP/Pathfinder/TTT/
-          windeployqt PathfinderPP --release --compiler-runtime
-          cd PathfinderPP && 7z a ../PathfinderPP-win-${{steps.commit.outputs.short}}.zip .
+          mkdir -p Pathfinder/Pathfinder/TTT
+          cp Pathfinder.exe Pathfinder/
+          cp ../Pathfinder/TTT/ttt.exe Pathfinder/Pathfinder/TTT/
+          cp ../Pathfinder/TTT/glpsol.exe Pathfinder/Pathfinder/TTT/
+          windeployqt Pathfinder --release --compiler-runtime
+          cd Pathfinder && 7z a ../Pathfinder-win-${{steps.commit.outputs.short}}.zip .
 
       - name: '📤 Upload artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: PathfinderPP-win-${{steps.commit.outputs.short}}
-          path: ${{github.workspace}}/build/PathfinderPP-win-*.zip
+          name: Pathfinder-win-${{steps.commit.outputs.short}}
+          path: ${{github.workspace}}/build/Pathfinder-win-*.zip
 
   # Upload continuous build
   upload:
@@ -255,6 +255,6 @@ jobs:
         run: |
             wget -q https://github.com/TheAssassin/pyuploadtool/releases/download/continuous/pyuploadtool-x86_64.AppImage
             chmod +x pyuploadtool-x86_64.AppImage
-            ./pyuploadtool-x86_64.AppImage **/PathfinderPP-Linux-*.AppImage
-            ./pyuploadtool-x86_64.AppImage **/PathfinderPP-macOS-*.dmg
-            ./pyuploadtool-x86_64.AppImage **/PathfinderPP-win-*.zip
+            ./pyuploadtool-x86_64.AppImage **/Pathfinder-Linux-*.AppImage
+            ./pyuploadtool-x86_64.AppImage **/Pathfinder-macOS-*.dmg
+            ./pyuploadtool-x86_64.AppImage **/Pathfinder-win-*.zip

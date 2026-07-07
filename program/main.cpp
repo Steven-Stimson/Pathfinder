@@ -95,7 +95,7 @@ static SubCmd parseCmdLine(CLI::App &app, int argc, char *argv[]) {
     LayoutCmd laCmd;
     auto *la = addLayoutSubcommand(app, laCmd);
 
-    app.footer("Online Pathfinder help: https://github.com/asl/PathfinderPP/wiki");
+    app.footer("Online Pathfinder help: https://github.com/asl/Pathfinder/wiki");
 
     app.parse(argc, argv);
 

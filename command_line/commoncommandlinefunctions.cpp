@@ -193,6 +193,6 @@ bool isError(const QString& text)
 
 void getOnlineHelpMessage(QStringList * text)
 {
-    *text << "Online Pathfinder help: https://github.com/asl/PathfinderPP/wiki";
+    *text << "Online Pathfinder help: https://github.com/asl/Pathfinder/wiki";
     *text << "";
 }

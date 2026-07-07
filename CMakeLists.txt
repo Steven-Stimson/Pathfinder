@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(PathfinderPP LANGUAGES CXX)
+project(Pathfinder LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -178,24 +178,24 @@ target_include_directories(PathfinderLib PRIVATE ${zstd_SOURCE_DIR}/lib)
 add_library(PathfinderCLI STATIC ${CLI_SOURCES})
 target_link_libraries(PathfinderCLI PRIVATE PathfinderLib CLI11::CLI11 Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
 
-add_executable(PathfinderPP program/main.cpp ${RESOURCES})
-target_link_libraries(PathfinderPP PathfinderCLI PathfinderLib CLI11::CLI11 Qt6::Core Qt6::Widgets Qt6::Concurrent ${bandage_zlib})
-set_target_properties(PathfinderPP PROPERTIES OUTPUT_NAME "Pathfinder")
+add_executable(Pathfinder program/main.cpp ${RESOURCES})
+target_link_libraries(Pathfinder PathfinderCLI PathfinderLib CLI11::CLI11 Qt6::Core Qt6::Widgets Qt6::Concurrent ${bandage_zlib})
+set_target_properties(Pathfinder PROPERTIES OUTPUT_NAME "Pathfinder")
 
 # On macOS, make AGL a weak framework to prevent link failure when it's missing (Xcode 26+)
 if(APPLE)
-    target_link_options(PathfinderPP PRIVATE "LINKER:-weak_framework,AGL")
+    target_link_options(Pathfinder PRIVATE "LINKER:-weak_framework,AGL")
 endif()
 
 # Build as a Windows GUI application (no console window on startup).
 # Qt provides a WinMain wrapper that calls our main(). CLI mode still works,
 # but stdout/stderr are not attached to a console by default.
 if (WIN32)
-    set_target_properties(PathfinderPP PROPERTIES WIN32_EXECUTABLE TRUE)
+    set_target_properties(Pathfinder PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
 if (APPLE)
-  set_target_properties(PathfinderPP PROPERTIES
+  set_target_properties(Pathfinder PROPERTIES
         MACOSX_BUNDLE ON
         MACOSX_BUNDLE_BUNDLE_NAME "Pathfinder"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
@@ -213,18 +213,18 @@ else()
     set(TTT_BINARY_NAME "ttt")
     set(GLPSOL_BINARY_NAME "glpsol")
 endif()
-add_custom_command(TARGET PathfinderPP POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PathfinderPP>/../Pathfinder/TTT"
+add_custom_command(TARGET Pathfinder POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Pathfinder>/../Pathfinder/TTT"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${TTT_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:PathfinderPP>/../Pathfinder/TTT/${TTT_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:Pathfinder>/../Pathfinder/TTT/${TTT_BINARY_NAME}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:PathfinderPP>/../Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:Pathfinder>/../Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
 )
 
 add_subdirectory(resources)
-install(TARGETS PathfinderPP
+install(TARGETS Pathfinder
         DESTINATION bin
         COMPONENT main)
 

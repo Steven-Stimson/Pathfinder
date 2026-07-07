@@ -1,5 +1,5 @@
 install(
-    FILES PathfinderPP.desktop
+    FILES Pathfinder.desktop
     DESTINATION share/applications/
 )
 
