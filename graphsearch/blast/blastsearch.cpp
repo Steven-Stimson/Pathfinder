@@ -298,6 +298,8 @@ void BlastSearch::cancelSearch() {
 }
 
 QString BlastSearch::annotationGroupName() const {
+    if (!m_annotationGroupName.isEmpty())
+        return m_annotationGroupName;
     return g_settings->blastAnnotationGroupName;
 }
 

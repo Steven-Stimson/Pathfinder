@@ -19,6 +19,7 @@
 
 #include <csv/csv.hpp>
 
+#include <fstream>
 #include <sstream>
 
 namespace bed {
@@ -37,6 +38,22 @@ static std::vector<int64_t> parseIntArray(const std::string &intArrayString) {
 }
 
 std::vector<Line> load(const std::filesystem::path &path) {
+    // Read file and filter out comment lines (starting with #)
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open BED file: " + path.string());
+    }
+
+    std::stringstream filteredContent;
+    std::string line;
+    while (std::getline(file, line)) {
+        // Skip comment lines and empty lines
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        filteredContent << line << '\n';
+    }
+
     csv::CSVFormat format;
     format.delimiter('\t')
           .quote('"')
@@ -44,11 +61,11 @@ std::vector<Line> load(const std::filesystem::path &path) {
     format.column_names({
             "chrom", "chromStart", "chromEnd",
             "name", "score", "strand",
-            "thickStart", "thinkEnd",
+            "thickStart", "thickEnd",
             "itemRgb", "blockCount",
             "blockSizes", "blockStarts"
         });
-    csv::CSVReader csvReader(path.string(), format);
+    csv::CSVReader csvReader(filteredContent, format);
 
     csv::CSVRow row;
     std::vector<Line> res;
@@ -83,13 +100,16 @@ std::vector<Line> load(const std::filesystem::path &path) {
                 bedLine.score = cell.is_int() ? cell.get<int>() : 0;
                 break;
             case 5:
-                bedLine.strand = Strand{cell.get()[0]};
+                {
+                    auto s = cell.get();
+                    bedLine.strand = Strand{s.empty() ? '.' : s[0]};
+                }
                 break;
             case 6:
-                bedLine.thickStart = cell.get<int64_t>();
+                bedLine.thickStart = (cell.get() == "." || cell.get().empty()) ? -1 : cell.get<int64_t>();
                 break;
             case 7:
-                bedLine.thickEnd = cell.get<int64_t>();
+                bedLine.thickEnd = (cell.get() == "." || cell.get().empty()) ? -1 : cell.get<int64_t>();
                 break;
             case 8:
                 itemRgbString = cell.get();

@@ -47,7 +47,9 @@ public:
     bool allowManualQueries() const override { return false; }
     QString name() const override { return "HMMER"; }
     QString queryFormat() const override { return "HMM"; }
-    QString annotationGroupName() const override { return "HMMER hits"; };
+    QString annotationGroupName() const override {
+        return m_annotationGroupName.isEmpty() ? "HMMER hits" : m_annotationGroupName;
+    };
 
 public slots:
     void cancelDatabaseBuild() override;

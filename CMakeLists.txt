@@ -54,6 +54,7 @@ set(LIB_SOURCES
     ui/dialogs/aboutdialog.cpp
     ui/annotationswidget.cpp
     ui/bedwidget.cpp
+    ui/dialogs/beddialog.cpp
     ui/dialogs/hitfiltersdialog.cpp
     ui/dialogs/graphsearchdialog.cpp
     ui/dialogs/changenodedepthdialog.cpp
@@ -89,6 +90,7 @@ set(LIB_SOURCES
 
 set(FORMS
     ui/dialogs/aboutdialog.ui
+    ui/dialogs/beddialog.ui
     ui/dialogs/hitfiltersdialog.ui
     ui/dialogs/graphsearchdialog.ui
     ui/dialogs/changenodedepthdialog.ui

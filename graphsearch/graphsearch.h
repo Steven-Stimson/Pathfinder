@@ -92,6 +92,7 @@ public:
     [[nodiscard]] virtual QString name() const = 0;
     [[nodiscard]] virtual QString queryFormat() const = 0;
     [[nodiscard]] virtual QString annotationGroupName() const = 0;
+    void setAnnotationGroupName(const QString &name) { m_annotationGroupName = name; }
     [[nodiscard]] virtual bool allowManualQueries() const { return true; }
 
     static std::unique_ptr<GraphSearch> get(GraphSearchKind kind,
@@ -112,6 +113,7 @@ signals:
 
 protected:
     QString m_lastError;
+    QString m_annotationGroupName;  // Custom name override
 
 private:
     Queries m_queries;

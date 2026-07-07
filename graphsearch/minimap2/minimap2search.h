@@ -46,7 +46,9 @@ public:
 
     QString name() const override { return "Minimap2"; }
     QString queryFormat() const override { return "FASTA"; }
-    QString annotationGroupName() const override { return "Minimap2 hits"; };
+    QString annotationGroupName() const override {
+        return m_annotationGroupName.isEmpty() ? "Minimap2 hits" : m_annotationGroupName;
+    };
 
 public slots:
     void cancelDatabaseBuild() override;

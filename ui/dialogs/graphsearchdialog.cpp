@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Ryan Wick
+// Copyright 2017 Ryan Wick
 // Copyright 2022 Anton Korobeynikov
 
 //This file is part of Pathfinder
@@ -19,8 +19,6 @@
 #include "graphsearchdialog.h"
 #include "ui_graphsearchdialog.h"
 
-#include "enteronequerydialog.h"
-
 #include "graphsearch/hit.h"
 #include "graphsearch/query.h"
 #include "graphsearch/graphsearch.h"
@@ -29,7 +27,6 @@
 #include "graph/assemblygraph.h"
 #include "graph/annotationsmanager.h"
 
-#include "myprogressdialog.h"
 #include "querypathsdialog.h"
 #include "hitfiltersdialog.h"
 
@@ -37,6 +34,7 @@
 #include "program/settings.h"
 #include "program/memory.h"
 
+#include <QApplication>
 #include <QFileDialog>
 #include <QFile>
 #include <QString>
@@ -45,7 +43,8 @@
 #include <QColorDialog>
 #include <QPainter>
 #include <QSortFilterProxyModel>
-#include <QtConcurrent>
+#include <QRegularExpression>
+#include <QTextStream>
 
 using namespace search;
 
@@ -107,81 +106,47 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
     ui->blastHitsTable->setSortingEnabled(true);
 
     setFilterText();
-    setUiCaptions();
 
-    // Load any previous parameters the user might have entered when previously using this dialog.
-    ui->parametersLineEdit->setText(g_settings->blastSearchParameters);
-
-    // If the dialog is given an autoQuery parameter, then it will
-    // carry out the entire process on its own.
+    // If the dialog is given an autoQuery parameter, import results directly
     if (!autoQuery.isEmpty()) {
-        buildDatabase(false);
-        clearAllQueries();
-        loadQueriesFromFile(autoQuery);
-        runGraphSearches(false);
+        importResultsFromFile(autoQuery);
         QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
         emit changed();
         return;
     }
 
-    // If a BLAST database already exists, move to step 2.
-    QFile databaseFile(m_graphSearch->temporaryDir().filePath("all_nodes.fasta"));
-    if (databaseFile.exists())
-        setUiStep(GRAPH_DB_BUILT_BUT_NO_QUERIES);
-    //If there isn't a BLAST database, clear the entire temporary directory
-    //and move to step 1.
-    else {
-        m_graphSearch->emptyTempDirectory();
-        setUiStep(GRAPH_DB_NOT_YET_BUILT);
-    }
+    connect(ui->importResultsButton, SIGNAL(clicked()), this, SLOT(importResultsButtonClicked()));
+    connect(ui->filtersButton, SIGNAL(clicked()), this, SLOT(openFiltersDialog()));
+    connect(ui->closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 
-    // If queries already exist, display them and move to step 3.
-    if (!m_graphSearch->queries().empty()) {
-        updateTables();
-        setUiStep(READY_FOR_GRAPH_SEARCH);
-    }
-
-    // If results already exist, display them and move to step 4.
-    if (!m_hitsListModel->empty()) {
-        updateTables();
-        setUiStep(GRAPH_SEARCH_COMPLETE);
-    }
-
-    connect(ui->buildBlastDatabaseButton, SIGNAL(clicked()), this, SLOT(buildGraphDatabaseInThread()));
-    connect(ui->loadQueriesFromFastaButton, SIGNAL(clicked()), this, SLOT(loadQueriesFromFileButtonClicked()));
-    connect(ui->enterQueryManuallyButton, SIGNAL(clicked()), this, SLOT(enterQueryManually()));
-    connect(ui->clearAllQueriesButton, SIGNAL(clicked()), this, SLOT(clearAllQueries()));
-    connect(ui->clearSelectedQueriesButton, SIGNAL(clicked(bool)), this, SLOT(clearSelectedQueries()));
-    connect(ui->runBlastSearchButton, SIGNAL(clicked()), this, SLOT(runGraphSearchesInThread()));
-
+    // Selection change handler (for future use)
     connect(ui->blastQueriesTable->selectionModel(),
         &QItemSelectionModel::selectionChanged,
         [this]() {
-            auto *select = ui->blastQueriesTable->selectionModel();
-            ui->clearSelectedQueriesButton->setEnabled(select->hasSelection());
+            // Could enable/disable buttons here if needed
         });
 
     connect(ui->blastQueriesTable,
             &QTableView::clicked,
-            m_queriesListModel,
-            [this](const QModelIndex &index) {
-                if (!index.isValid())
+            this,
+            [this, proxyQModel](const QModelIndex &proxyIndex) {
+                if (!proxyIndex.isValid())
                     return;
 
-                auto column = QueriesHitColumns(index.column());
+                auto sourceIndex = proxyQModel->mapToSource(proxyIndex);
+                auto column = QueriesHitColumns(sourceIndex.column());
                 if (column != QueriesHitColumns::Color)
                     return;
 
-                if (auto *query = m_queriesListModel->query(index)) {
+                if (auto *query = m_queriesListModel->query(sourceIndex)) {
                     QColor chosenColour = QColorDialog::getColor(query->getColour(),
                                                                  this,
                                                                  "Query color", QColorDialog::ShowAlphaChannel);
                     if (!chosenColour.isValid())
                         return;
 
-                    m_queriesListModel->setColor(index, chosenColour);
-
-                    this->activateWindow(); // FIXME: why do we really need this? :(
+                    m_queriesListModel->setColor(sourceIndex, chosenColour);
+                    this->activateWindow();
                 }
             });
 
@@ -190,15 +155,34 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
                 emit changed();
             });
 
-    // This is weird: we need to propagate data changes to proxies
+    // Propagate data changes to the queries proxy model
     connect(m_queriesListModel, &QueriesListModel::dataChanged,
-            [proxyHModel, proxyQModel](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
+            [proxyQModel](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
                 emit proxyQModel->dataChanged(proxyQModel->mapFromSource(topLeft), proxyQModel->mapFromSource(bottomRight));
+            });
+
+    // When queries change, update the hits table too
+    connect(m_queriesListModel, &QueriesListModel::dataChanged,
+            [this, proxyHModel]() {
+                m_hitsListModel->update(m_graphSearch->queries());
                 emit proxyHModel->dataChanged(QModelIndex(), QModelIndex());
             });
 
-    connect(ui->blastFiltersButton, SIGNAL(clicked(bool)), this, SLOT(openFiltersDialog()));
-    connect(ui->searcherComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(searcherChanged()));
+    connect(ui->blastQueriesTable, &QTableView::doubleClicked,
+            [this](const QModelIndex &index) {
+                if (!index.isValid())
+                    return;
+
+                auto *proxyModel = qobject_cast<QSortFilterProxyModel *>(ui->blastQueriesTable->model());
+                auto sourceIndex = proxyModel->mapToSource(index);
+                auto *query = m_queriesListModel->query(sourceIndex);
+                if (!query || query->getPaths().empty())
+                    return;
+
+                QueryPathsDialog dialog(query, this);
+                dialog.exec();
+                emit queryPathSelectionChanged();
+            });
 }
 
 GraphSearchDialog::~GraphSearchDialog() {
@@ -206,572 +190,345 @@ GraphSearchDialog::~GraphSearchDialog() {
 }
 
 void GraphSearchDialog::afterWindowShow() {
-    updateTables();
+    // Nothing to do in simplified mode
 }
 
 void GraphSearchDialog::clearHits() {
     m_graphSearch->clearHits();
-    g_annotationsManager->removeGroupByName(m_graphSearch->annotationGroupName());
+    m_hitsListModel->clear();
     updateTables();
+    emit changed();
 }
 
-void GraphSearchDialog::fillTablesAfterGraphSearch() {
-    updateTables();
+void GraphSearchDialog::setFilterText() {
+    QStringList filters;
+    if (g_settings->blastAlignmentLengthFilter.on)
+        filters << QString("Aln. length ≥%1").arg(int(g_settings->blastAlignmentLengthFilter));
+    if (g_settings->blastQueryCoverageFilter.on)
+        filters << QString("Query coverage ≥%1%").arg(double(g_settings->blastQueryCoverageFilter));
+    if (g_settings->blastIdentityFilter.on)
+        filters << QString("Identity ≥%1%").arg(double(g_settings->blastIdentityFilter));
+    if (g_settings->blastEValueFilter.on)
+        filters << QString("E-value ≤%1").arg(g_settings->blastEValueFilter.val.asString(false));
+    if (g_settings->blastBitScoreFilter.on)
+        filters << QString("Bit score ≥%1").arg(double(g_settings->blastBitScoreFilter));
 
-    if (m_hitsListModel->empty())
-        QMessageBox::information(this, "No hits", "No " + m_graphSearch->name() + " hits were found for the given queries and parameters.");
+    if (filters.empty())
+        ui->filtersLabel->setText("Current filters: None");
+    else
+        ui->filtersLabel->setText("Current filters: " + filters.join(", "));
 }
 
 void GraphSearchDialog::updateTables() {
     m_queriesListModel->update();
     m_hitsListModel->update(m_graphSearch->queries());
-    ui->blastQueriesTable->resizeColumnsToContents();
-    ui->blastHitsTable->resizeColumnsToContents();
 }
 
-void GraphSearchDialog::buildGraphDatabaseInThread() {
-    buildDatabase(true);
+void GraphSearchDialog::updateTablesAndEmit() {
+    updateTables();
+    emit changed();
 }
 
-void GraphSearchDialog::buildDatabase(bool separateThread) {
-    setUiStep(GRAPH_DB_BUILD_IN_PROGRESS);
+void GraphSearchDialog::importResultsButtonClicked() {
+    QString fullFileName = QFileDialog::getOpenFileName(
+        this,
+        "Import Search Results",
+        g_memory->rememberedPath,
+        "All supported formats (*.paf *.blast *.out *.domtbl *.tbl);;"
+        "PAF files (*.paf);;"
+        "BLAST tabular (*.blast *.out);;"
+        "HMMER domtbl (*.domtbl *.tbl);;"
+        "All files (*)");
 
-    auto * progress = new MyProgressDialog(this, "Running " + m_graphSearch->name() + " database...",
-                                           separateThread,
-                                           "Cancel build",
-                                           "Cancelling build...",
-                                           "Clicking this button will stop the " + m_graphSearch->name() + " database from being built.");
-    progress->setWindowModality(Qt::WindowModal);
-    progress->show();
-
-    connect(m_graphSearch.get(), SIGNAL(finishedDbBuild(QString)), progress, SLOT(deleteLater()));
-    connect(m_graphSearch.get(), SIGNAL(finishedDbBuild(QString)), this, SLOT(graphDatabaseBuildFinished(QString)));
-    connect(progress, SIGNAL(halt()), m_graphSearch.get(), SLOT(cancelDatabaseBuild()));
-
-    auto builder = [this]() { m_graphSearch->buildDatabase(*g_assemblyGraph, ui->includeGFAPaths->isChecked()); };
-    if (separateThread) {
-        QFuture<void> res = QtConcurrent::run(builder);
-    } else
-        builder();
-}
-
-
-void GraphSearchDialog::graphDatabaseBuildFinished(const QString& error) {
-    disconnect(m_graphSearch.get(), SIGNAL(finishedDbBuild(QString)), this, nullptr);
-
-    if (!error.isEmpty()) {
-        QMessageBox::warning(this, "Error", error);
-        setUiStep(GRAPH_DB_NOT_YET_BUILT);
-    } else
-        setUiStep(GRAPH_DB_BUILT_BUT_NO_QUERIES);
-}
-
-void GraphSearchDialog::loadQueriesFromFileButtonClicked() {
-    QStringList fullFileNames = QFileDialog::getOpenFileNames(this, "Load queries", g_memory->rememberedPath);
-
-    if (fullFileNames.empty()) //User did hit cancel
+    if (fullFileName.isEmpty())
         return;
 
-    for (const auto &fullFileName : fullFileNames)
-        loadQueriesFromFile(fullFileName);
+    importResultsFromFile(fullFileName);
 }
 
-void GraphSearchDialog::loadQueriesFromFile(const QString& fullFileName) {
-    auto * progress = new MyProgressDialog(this, "Loading queries...", false);
-    progress->setWindowModality(Qt::WindowModal);
-    progress->show();
+void GraphSearchDialog::importResultsFromFile(const QString &fullFileName) {
+    // Auto-detect format from extension
+    QString ext = QFileInfo(fullFileName).suffix().toLower();
+    int hitsImported = 0;
 
-    int queriesLoaded = m_graphSearch->loadQueriesFromFile(fullFileName);
-    if (queriesLoaded > 0) {
-        clearHits();
+    if (ext == "paf") {
+        ui->searcherComboBox->setCurrentIndex(0); // Minimap2
+        hitsImported = importPAF(fullFileName);
+    } else if (ext == "blast" || ext == "out") {
+        ui->searcherComboBox->setCurrentIndex(1); // BLAST
+        hitsImported = importBlastTabular(fullFileName);
+    } else if (ext == "domtbl" || ext == "tbl") {
+        ui->searcherComboBox->setCurrentIndex(2); // HMMER
+        hitsImported = importHmmerDomtbl(fullFileName);
+    } else {
+        // Try PAF first, then BLAST
+        hitsImported = importPAF(fullFileName);
+        if (hitsImported == 0) {
+            hitsImported = importBlastTabular(fullFileName);
+            if (hitsImported > 0)
+                ui->searcherComboBox->setCurrentIndex(1);
+        } else {
+            ui->searcherComboBox->setCurrentIndex(0);
+        }
+    }
+
+    if (hitsImported > 0) {
+        // Set annotation group name based on the imported filename
+        QString baseName = QFileInfo(fullFileName).fileName();
+        m_graphSearch->setAnnotationGroupName(baseName);
+
+        m_graphSearch->queries().findQueryPaths();
+        m_graphSearch->queries().searchOccurred();
+        updateTables();
+        emit changed();
+
+        ui->importStatusLabel->setText(
+            QString("Imported %1 hits from %2")
+                .arg(hitsImported)
+                .arg(baseName));
 
         g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
-        setUiStep(READY_FOR_GRAPH_SEARCH);
+    } else {
+        QMessageBox::warning(this, "Import Failed",
+            "No valid hits found in the file. Please check the format.");
+        ui->importStatusLabel->setText("Import failed");
     }
-    updateTables();
-
-    progress->close();
-    progress->deleteLater();
-
-    if (queriesLoaded == 0)
-        QMessageBox::information(this, "No queries loaded",
-                                 "No queries could be loaded from the specified file: " + m_graphSearch->lastError());
 }
 
+// Helper function to find a node by name, trying with/without +/- suffix
+static DeBruijnNode* findNodeByName(const QString &name) {
+    // Try exact name first
+    auto it = g_assemblyGraph->m_deBruijnGraphNodes.find(name.toStdString());
+    if (it != g_assemblyGraph->m_deBruijnGraphNodes.end())
+        return *it;
 
-void GraphSearchDialog::enterQueryManually() {
-    EnterOneQueryDialog enterOneQueryDialog(this);
-    if (!enterOneQueryDialog.exec())
-        return;
+    // Try with + suffix
+    QString posName = name + "+";
+    it = g_assemblyGraph->m_deBruijnGraphNodes.find(posName.toStdString());
+    if (it != g_assemblyGraph->m_deBruijnGraphNodes.end())
+        return *it;
 
-    QString queryName = GraphSearch::cleanQueryName(enterOneQueryDialog.getName());
-    m_graphSearch->addQuery(new search::Query(queryName,
-                                              enterOneQueryDialog.getSequence()));
-    updateTables();
-    clearHits();
+    // Try with - suffix
+    QString negName = name + "-";
+    it = g_assemblyGraph->m_deBruijnGraphNodes.find(negName.toStdString());
+    if (it != g_assemblyGraph->m_deBruijnGraphNodes.end())
+        return *it;
 
-    setUiStep(READY_FOR_GRAPH_SEARCH);
+    return nullptr;
+}
+
+int GraphSearchDialog::importPAF(const QString &fullFileName) {
+    QFile file(fullFileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return 0;
+
+    Queries &queries = m_graphSearch->queries();
+    int hitsImported = 0;
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith('#'))
+            continue;
+
+        QStringList parts = line.split('\t');
+        if (parts.size() < 12)
+            continue;
+
+        // PAF format:
+        // 0: queryName, 1: queryLen, 2: queryStart, 3: queryEnd
+        // 4: strand, 5: targetName, 6: targetLen, 7: targetStart, 8: targetEnd
+        // 9: residues, 10: alnLen, 11: mapQ
+        QString queryName = parts[0];
+        int queryLen = parts[1].toInt();
+        int queryStart = parts[2].toInt() + 1; // Convert to 1-based
+        int queryEnd = parts[3].toInt();
+        // bool strand = (parts[4] == "+"); // unused for now
+        QString targetName = parts[5];
+        // int targetLen = parts[6].toInt(); // unused
+        int targetStart = parts[7].toInt() + 1; // Convert to 1-based
+        int targetEnd = parts[8].toInt();
+        int alnLen = parts[10].toInt();
+
+        // Get or create query
+        Query *query = queries.getQueryFromName(queryName);
+        if (query == nullptr) {
+            // Create a dummy sequence of the correct length
+            QByteArray dummySeq(queryLen, 'N');
+            query = new Query(queryName, dummySeq);
+            queries.addQuery(query);
+        }
+
+        // Find the node in the graph
+        DeBruijnNode *node = findNodeByName(targetName);
+        if (node) {
+            auto *hit = new Hit(query, node,
+                                -1, alnLen,
+                                -1, -1,
+                                queryStart, queryEnd,
+                                targetStart, targetEnd, 0, 0);
+            query->addHit(hit);
+            hitsImported++;
+        }
+    }
+
+    return hitsImported;
+}
+
+int GraphSearchDialog::importBlastTabular(const QString &fullFileName) {
+    QFile file(fullFileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return 0;
+
+    Queries &queries = m_graphSearch->queries();
+    int hitsImported = 0;
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith('#'))
+            continue;
+
+        QStringList parts = line.split('\t');
+        if (parts.size() < 12)
+            continue;
+
+        // BLAST tabular format (-outfmt 6):
+        // 0: queryName, 1: subjectName, 2: identity, 3: alignLen
+        // 4: mismatches, 5: gapOpens, 6: queryStart, 7: queryEnd
+        // 8: subjectStart, 9: subjectEnd, 10: evalue, 11: bitScore
+        QString queryName = parts[0];
+        QString subjectName = parts[1];
+        double identity = parts[2].toDouble();
+        int alignLen = parts[3].toInt();
+        int mismatches = parts[4].toInt();
+        int gapOpens = parts[5].toInt();
+        int queryStart = parts[6].toInt();
+        int queryEnd = parts[7].toInt();
+        int subjectStart = parts[8].toInt();
+        int subjectEnd = parts[9].toInt();
+        double evalue = parts[10].toDouble();
+        double bitScore = parts[11].toDouble();
+
+        // Get or create query
+        Query *query = queries.getQueryFromName(queryName);
+        if (query == nullptr) {
+            query = new Query(queryName, QByteArray());
+            queries.addQuery(query);
+        }
+
+        // Find the node in the graph
+        DeBruijnNode *node = findNodeByName(subjectName);
+        if (node) {
+            auto *hit = new Hit(query, node,
+                                identity, alignLen,
+                                mismatches, gapOpens,
+                                queryStart, queryEnd,
+                                subjectStart, subjectEnd,
+                                SciNot(evalue), bitScore);
+            query->addHit(hit);
+            hitsImported++;
+        }
+    }
+
+    return hitsImported;
+}
+
+int GraphSearchDialog::importHmmerDomtbl(const QString &fullFileName) {
+    QFile file(fullFileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return 0;
+
+    Queries &queries = m_graphSearch->queries();
+    int hitsImported = 0;
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith('#'))
+            continue;
+
+        QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        if (parts.size() < 23)
+            continue;
+
+        // HMMER domtbl format:
+        // 0: targetName, 1: targetAccession, 2: tlen
+        // 3: queryName, 4: queryAccession, 5: qlen
+        // 6: E-value, 7: score, 8: bias
+        // 9: domain, 10: ndom, 11: cEvalue, 12: iEvalue, 13: dScore, 14: dBias
+        // 15: hmmFrom, 16: hmmTo, 17: aliFrom, 18: aliTo
+        // 19: envFrom, 20: envTo, 21: acc, 22: description
+        QString targetName = parts[0];
+        // int targetLen = parts[2].toInt(); // unused
+        QString queryName = parts[3];
+        int queryLen = parts[5].toInt();
+        double evalue = parts[6].toDouble();
+        double bitScore = parts[7].toDouble();
+        int aliFrom = parts[17].toInt();
+        int aliTo = parts[18].toInt();
+
+        // Get or create query
+        Query *query = queries.getQueryFromName(queryName);
+        if (query == nullptr) {
+            QByteArray dummySeq(queryLen, 'N');
+            query = new Query(queryName, dummySeq);
+            queries.addQuery(query);
+        }
+
+        // Find the node in the graph
+        DeBruijnNode *node = findNodeByName(targetName);
+        if (node) {
+            auto *hit = new Hit(query, node,
+                                -1, aliTo - aliFrom + 1,
+                                -1, -1,
+                                1, queryLen, // Full query coverage for HMM hits
+                                aliFrom, aliTo,
+                                SciNot(evalue), bitScore);
+            query->addHit(hit);
+            hitsImported++;
+        }
+    }
+
+    return hitsImported;
 }
 
 void GraphSearchDialog::clearAllQueries() {
-    ui->clearAllQueriesButton->setEnabled(false);
-
-    m_queriesListModel->m_queries.get().clearAllQueries();
-
     clearHits();
+    m_graphSearch->queries().clearAllQueries();
     updateTables();
-
-    setUiStep(GRAPH_DB_BUILT_BUT_NO_QUERIES);
     emit changed();
 }
 
 void GraphSearchDialog::clearSelectedQueries() {
-    // Use the table selection to figure out which queries are to be removed.
-    QItemSelectionModel *select = ui->blastQueriesTable->selectionModel();
-    QModelIndexList selection = select->selectedIndexes();
-
-    if (selection.size() == m_queriesListModel->m_queries.get().getQueryCount()) {
-        clearAllQueries();
+    auto *selectionModel = ui->blastQueriesTable->selectionModel();
+    if (!selectionModel->hasSelection())
         return;
-    }
 
-    std::vector<Query *> queriesToRemove;
-    for (const auto &index : selection)
-        queriesToRemove.push_back(m_queriesListModel->query(index));
-    m_queriesListModel->m_queries.get().clearSomeQueries(queriesToRemove);
+    auto *proxyModel = qobject_cast<QSortFilterProxyModel *>(ui->blastQueriesTable->model());
+    auto selectedRows = selectionModel->selectedRows();
 
-    updateTables();
-
-    emit changed();
-}
-
-void GraphSearchDialog::runGraphSearchesInThread() {
-    runGraphSearches(true);
-}
-
-void GraphSearchDialog::runGraphSearches(bool separateThread) {
-    setUiStep(GRAPH_SEARCH_IN_PROGRESS);
-
-    clearHits();
-
-    auto * progress = new MyProgressDialog(this, "Running " + m_graphSearch->name() + " search...",
-                                           separateThread,
-                                           "Cancel search",
-                                           "Cancelling search...",
-                                           "Clicking this button will stop the " + m_graphSearch->name() + " search.");
-    progress->setWindowModality(Qt::WindowModal);
-    progress->show();
-
-    connect(m_graphSearch.get(), SIGNAL(finishedSearch(QString)), progress, SLOT(deleteLater()));
-    connect(m_graphSearch.get(), SIGNAL(finishedSearch(QString)), this, SLOT(graphSearchFinished(QString)));
-    connect(progress, SIGNAL(halt()), m_graphSearch.get(), SLOT(cancelSearch()));
-
-    auto searcher = [&]() { m_graphSearch->doSearch(ui->parametersLineEdit->text().simplified()); };
-    if (separateThread) {
-        QFuture<void> res = QtConcurrent::run(searcher);
-    } else
-        searcher();
-}
-
-void GraphSearchDialog::graphSearchFinished(const QString& error) {
-    disconnect(m_graphSearch.get(), SIGNAL(finishedSearch(QString)), this, nullptr);
-
-    if (!error.isEmpty()) {
-        QMessageBox::warning(this, "Error", error);
-        setUiStep(READY_FOR_GRAPH_SEARCH);
-    } else {
-        fillTablesAfterGraphSearch();
-        g_settings->blastSearchParameters = ui->parametersLineEdit->text().simplified();
-        setUiStep(GRAPH_SEARCH_COMPLETE);
-    }
-
-    emit changed();
-}
-
-void GraphSearchDialog::setUiStep(SearchUiState uiState) {
-    QPixmap tick(":/icons/tick-128.png");
-    tick.setDevicePixelRatio(devicePixelRatio()); //This is a workaround for a Qt bug.  Can possibly remove in the future.  https://bugreports.qt.io/browse/QTBUG-46846
-
-    switch (uiState) {
-    case GRAPH_DB_NOT_YET_BUILT:
-        ui->step1Label->setEnabled(true);
-        ui->buildBlastDatabaseButton->setEnabled(true);
-        ui->step2Label->setEnabled(false);
-        ui->loadQueriesFromFastaButton->setEnabled(false);
-        ui->enterQueryManuallyButton->setEnabled(false);
-        ui->blastQueriesTable->setEnabled(false);
-        ui->blastQueriesTableInfoText->setEnabled(false);
-        ui->step3Label->setEnabled(false);
-        ui->parametersLabel->setEnabled(false);
-        ui->parametersLineEdit->setEnabled(false);
-        ui->runBlastSearchButton->setEnabled(false);
-        ui->clearAllQueriesButton->setEnabled(false);
-        ui->clearSelectedQueriesButton->setEnabled(false);
-        ui->hitsLabel->setEnabled(false);
-        ui->step1TickLabel->setPixmap(QPixmap());
-        ui->step2TickLabel->setPixmap(QPixmap());
-        ui->step3TickLabel->setPixmap(QPixmap());
-        ui->buildBlastDatabaseInfoText->setEnabled(true);
-        ui->loadQueriesFromFastaInfoText->setEnabled(false);
-        ui->enterQueryManuallyInfoText->setEnabled(false);
-        ui->clearAllQueriesInfoText->setEnabled(false);
-        ui->clearSelectedQueriesInfoText->setEnabled(false);
-        ui->blastHitsTable->setEnabled(false);
-        ui->blastSearchWidget->setEnabled(false);
-        ui->blastHitsTableInfoText->setEnabled(false);
-        ui->includeGFAPaths->setEnabled(true);
-        ui->includeGFAPathsInfoText->setEnabled(true);
-        break;
-
-    case GRAPH_DB_BUILD_IN_PROGRESS:
-        ui->step1Label->setEnabled(true);
-        ui->buildBlastDatabaseButton->setEnabled(false);
-        ui->step2Label->setEnabled(false);
-        ui->loadQueriesFromFastaButton->setEnabled(false);
-        ui->enterQueryManuallyButton->setEnabled(false);
-        ui->blastQueriesTable->setEnabled(false);
-        ui->blastQueriesTableInfoText->setEnabled(false);
-        ui->step3Label->setEnabled(false);
-        ui->parametersLabel->setEnabled(false);
-        ui->parametersLineEdit->setEnabled(false);
-        ui->runBlastSearchButton->setEnabled(false);
-        ui->clearAllQueriesButton->setEnabled(false);
-        ui->clearSelectedQueriesButton->setEnabled(false);
-        ui->hitsLabel->setEnabled(false);
-        ui->step1TickLabel->setPixmap(QPixmap());
-        ui->step2TickLabel->setPixmap(QPixmap());
-        ui->step3TickLabel->setPixmap(QPixmap());
-        ui->buildBlastDatabaseInfoText->setEnabled(false);
-        ui->loadQueriesFromFastaInfoText->setEnabled(false);
-        ui->enterQueryManuallyInfoText->setEnabled(false);
-        ui->clearAllQueriesInfoText->setEnabled(false);
-        ui->clearSelectedQueriesInfoText->setEnabled(false);
-        ui->blastHitsTable->setEnabled(false);
-        ui->blastSearchWidget->setEnabled(false);
-        ui->blastHitsTableInfoText->setEnabled(false);
-        ui->includeGFAPaths->setEnabled(true);
-        ui->includeGFAPathsInfoText->setEnabled(true);
-        break;
-
-    case GRAPH_DB_BUILT_BUT_NO_QUERIES:
-        ui->step1Label->setEnabled(true);
-        ui->buildBlastDatabaseButton->setEnabled(false);
-        ui->step2Label->setEnabled(true);
-        ui->loadQueriesFromFastaButton->setEnabled(true);
-        ui->enterQueryManuallyButton->setEnabled(m_graphSearch->allowManualQueries());
-        ui->blastQueriesTable->setEnabled(true);
-        ui->blastQueriesTableInfoText->setEnabled(true);
-        ui->step3Label->setEnabled(false);
-        ui->parametersLabel->setEnabled(false);
-        ui->parametersLineEdit->setEnabled(false);
-        ui->runBlastSearchButton->setEnabled(false);
-        ui->clearAllQueriesButton->setEnabled(false);
-        ui->clearAllQueriesButton->setEnabled(false);
-        ui->hitsLabel->setEnabled(false);
-        ui->step1TickLabel->setPixmap(tick);
-        ui->step2TickLabel->setPixmap(QPixmap());
-        ui->step3TickLabel->setPixmap(QPixmap());
-        ui->buildBlastDatabaseInfoText->setEnabled(true);
-        ui->loadQueriesFromFastaInfoText->setEnabled(true);
-        ui->enterQueryManuallyInfoText->setEnabled(true);
-        ui->clearSelectedQueriesInfoText->setEnabled(false);
-        ui->clearSelectedQueriesInfoText->setEnabled(false);
-        ui->blastHitsTable->setEnabled(false);
-        ui->blastSearchWidget->setEnabled(false);
-        ui->blastHitsTableInfoText->setEnabled(false);
-        ui->includeGFAPaths->setEnabled(false);
-        ui->includeGFAPathsInfoText->setEnabled(false);
-        break;
-
-    case READY_FOR_GRAPH_SEARCH:
-        ui->step1Label->setEnabled(true);
-        ui->buildBlastDatabaseButton->setEnabled(false);
-        ui->step2Label->setEnabled(true);
-        ui->loadQueriesFromFastaButton->setEnabled(true);
-        ui->enterQueryManuallyButton->setEnabled(m_graphSearch->allowManualQueries());
-        ui->blastQueriesTable->setEnabled(true);
-        ui->blastQueriesTableInfoText->setEnabled(true);
-        ui->step3Label->setEnabled(true);
-        ui->parametersLabel->setEnabled(true);
-        ui->parametersLineEdit->setEnabled(true);
-        ui->runBlastSearchButton->setEnabled(true);
-        ui->clearAllQueriesButton->setEnabled(true);
-        ui->hitsLabel->setEnabled(false);
-        ui->step1TickLabel->setPixmap(tick);
-        ui->step2TickLabel->setPixmap(tick);
-        ui->step3TickLabel->setPixmap(QPixmap());
-        ui->buildBlastDatabaseInfoText->setEnabled(true);
-        ui->loadQueriesFromFastaInfoText->setEnabled(true);
-        ui->enterQueryManuallyInfoText->setEnabled(true);
-        ui->clearAllQueriesInfoText->setEnabled(true);
-        ui->clearSelectedQueriesInfoText->setEnabled(true);
-        ui->blastHitsTable->setEnabled(false);
-        ui->blastSearchWidget->setEnabled(true);
-        ui->blastHitsTableInfoText->setEnabled(false);
-        ui->includeGFAPaths->setEnabled(false);
-        ui->includeGFAPathsInfoText->setEnabled(false);
-        break;
-
-    case GRAPH_SEARCH_IN_PROGRESS:
-        ui->step1Label->setEnabled(true);
-        ui->buildBlastDatabaseButton->setEnabled(false);
-        ui->step2Label->setEnabled(true);
-        ui->loadQueriesFromFastaButton->setEnabled(true);
-        ui->enterQueryManuallyButton->setEnabled(m_graphSearch->allowManualQueries());
-        ui->blastQueriesTable->setEnabled(true);
-        ui->blastQueriesTableInfoText->setEnabled(true);
-        ui->step3Label->setEnabled(true);
-        ui->parametersLabel->setEnabled(true);
-        ui->parametersLineEdit->setEnabled(true);
-        ui->runBlastSearchButton->setEnabled(false);
-        ui->clearAllQueriesButton->setEnabled(true);
-        ui->hitsLabel->setEnabled(false);
-        ui->step1TickLabel->setPixmap(tick);
-        ui->step2TickLabel->setPixmap(tick);
-        ui->step3TickLabel->setPixmap(QPixmap());
-        ui->buildBlastDatabaseInfoText->setEnabled(true);
-        ui->loadQueriesFromFastaInfoText->setEnabled(true);
-        ui->enterQueryManuallyInfoText->setEnabled(true);
-        ui->clearAllQueriesInfoText->setEnabled(true);
-        ui->clearSelectedQueriesInfoText->setEnabled(true);
-        ui->blastHitsTable->setEnabled(false);
-        ui->blastSearchWidget->setEnabled(true);
-        ui->blastHitsTableInfoText->setEnabled(false);
-        ui->includeGFAPaths->setEnabled(false);
-        ui->includeGFAPathsInfoText->setEnabled(false);
-        break;
-
-    case GRAPH_SEARCH_COMPLETE:
-        ui->step1Label->setEnabled(true);
-        ui->buildBlastDatabaseButton->setEnabled(false);
-        ui->step2Label->setEnabled(true);
-        ui->loadQueriesFromFastaButton->setEnabled(true);
-        ui->enterQueryManuallyButton->setEnabled(m_graphSearch->allowManualQueries());
-        ui->blastQueriesTable->setEnabled(true);
-        ui->blastQueriesTableInfoText->setEnabled(true);
-        ui->step3Label->setEnabled(true);
-        ui->parametersLabel->setEnabled(true);
-        ui->parametersLineEdit->setEnabled(true);
-        ui->runBlastSearchButton->setEnabled(true);
-        ui->clearAllQueriesButton->setEnabled(true);
-        ui->hitsLabel->setEnabled(true);
-        ui->step1TickLabel->setPixmap(tick);
-        ui->step2TickLabel->setPixmap(tick);
-        ui->step3TickLabel->setPixmap(tick);
-        ui->buildBlastDatabaseInfoText->setEnabled(true);
-        ui->loadQueriesFromFastaInfoText->setEnabled(true);
-        ui->enterQueryManuallyInfoText->setEnabled(true);
-        ui->clearAllQueriesInfoText->setEnabled(true);
-        ui->clearSelectedQueriesInfoText->setEnabled(true);
-        ui->blastHitsTable->setEnabled(true);
-        ui->blastSearchWidget->setEnabled(true);
-        ui->blastHitsTableInfoText->setEnabled(true);
-        ui->includeGFAPaths->setEnabled(false);
-        ui->includeGFAPathsInfoText->setEnabled(false);
-        break;
-    }
-}
-
-void GraphSearchDialog::openFiltersDialog() {
-    HitFiltersDialog filtersDialog(this);
-    filtersDialog.setWidgetsFromSettings();
-
-    if (!filtersDialog.exec())
-        return; //The user did not click OK
-
-    filtersDialog.setSettingsFromWidgets();
-    setFilterText();
-}
-
-void GraphSearchDialog::setFilterText() {
-    ui->blastHitFiltersLabel->setText("Current filters: " + HitFiltersDialog::getFilterText());
-}
-
-void GraphSearchDialog::setUiCaptions() {
-    ui->step1Label->setText(QString("<b>Step 1:</b> build %1 database").arg(m_graphSearch->name()));
-    ui->step2Label->setText(QString("<b>Step 2:</b> enter %1 queries").arg(m_graphSearch->name()));
-    ui->step3Label->setText(QString("<b>Step 3:</b> run %1 search").arg(m_graphSearch->name()));
-    ui->loadQueriesFromFastaButton->setText(QString("Load from %1 file").arg(m_graphSearch->queryFormat()));
-    ui->buildBlastDatabaseButton->setText(QString("Build %1 database").arg(m_graphSearch->name()));
-    ui->blastFiltersButton->setText(QString("Set %1 hit filters").arg(m_graphSearch->name()));
-    ui->runBlastSearchButton->setText(QString("Run %1 search").arg(m_graphSearch->name()));
-}
-
-void GraphSearchDialog::searcherChanged() {
-    m_queriesListModel->startUpdate();
-    g_annotationsManager->removeGroupByName(m_graphSearch->annotationGroupName());
-
-    m_graphSearch = search::GraphSearch::get(search::GraphSearchKind(ui->searcherComboBox->currentIndex()),
-                                             QDir::temp(), this);
-    m_queriesListModel->setQueries(m_graphSearch->queries());
-
-    m_queriesListModel->endUpdate();
-
-    setUiStep(GRAPH_DB_NOT_YET_BUILT);
-    setUiCaptions();
-
-    updateTables();
-    emit changed();
-}
-
-QueriesListModel::QueriesListModel(Queries &queries, QObject *parent)
-  : m_queries(queries), QAbstractTableModel(parent) {}
-
-int QueriesListModel::rowCount(const QModelIndex &) const {
-    return m_queries.get().getQueryCount();
-}
-
-int QueriesListModel::columnCount(const QModelIndex &) const {
-    return int(QueriesHitColumns::TotalHitColumns);
-}
-
-QVariant QueriesListModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid())
-        return {};
-
-    auto *query = this->query(index);
-    if (!query)
-        return {};
-
-    auto column = QueriesHitColumns(index.column());
-    if (role == Qt::BackgroundRole) {
-        if (query->isHidden()) // Hide disabled queries
-            return QColor(150, 150, 150);
-        else if (column == QueriesHitColumns::Color)
-            return query->getColour();
-    }
-
-    if (role == Qt::CheckStateRole) {
-        if (column == QueriesHitColumns::Show)
-            return query->isShown() ? Qt::Checked : Qt::Unchecked;
-    }
-
-    if (role == Qt::TextAlignmentRole) {
-        if (column == QueriesHitColumns::Show)
-            return Qt::AlignCenter;
-    }
-
-    if (role == Qt::EditRole && column == QueriesHitColumns::QueryName)
-        return query->getName();
-
-    if (role != Qt::DisplayRole)
-        return {};
-
-    switch (column) {
-        default:
-            return {};
-        case QueriesHitColumns::QueryName:
-            return query->getName();
-        case QueriesHitColumns::Type:
-            return query->getTypeString();
-        case QueriesHitColumns::Length:
-            return unsigned(query->getLength());
-        case QueriesHitColumns::Hits:
-            if (query->wasSearchedFor())
-                return unsigned(query->hitCount());
-            return "-";
-        case QueriesHitColumns::QueryCover:
-            if (query->wasSearchedFor())
-                return formatDoubleForDisplay(100.0 * query->fractionCoveredByHits(), 2) + "%";
-            return "-";
-        case QueriesHitColumns::Paths:
-            if (query->wasSearchedFor())
-                return unsigned(query->getPathCount());
-            return "-";
-    }
-};
-
-QVariant QueriesListModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    if (role == Qt::TextAlignmentRole && orientation == Qt::Horizontal)
-        return Qt::AlignCenter;
-
-    if (role != Qt::DisplayRole)
-        return {};
-
-    if (orientation == Qt::Vertical)
-        return QString::number(section + 1);
-
-    switch (QueriesHitColumns(section)) {
-        default:
-            return {};
-        case QueriesHitColumns::Show:
-            return "Show";
-        case QueriesHitColumns::QueryName:
-            return "Query name";
-        case QueriesHitColumns::Type:
-            return "Type";
-        case QueriesHitColumns::Length:
-            return "Length";
-        case QueriesHitColumns::Hits:
-            return "Hits";
-        case QueriesHitColumns::QueryCover:
-            return "Query cover";
-        case QueriesHitColumns::Paths:
-            return "Paths";
-    }
-}
-
-Qt::ItemFlags QueriesListModel::flags(const QModelIndex &index) const {
-    if (!index.isValid())
-        return Qt::ItemIsEnabled;
-
-    auto column = QueriesHitColumns(index.column());
-    if (column == QueriesHitColumns::Show)
-        return QAbstractTableModel::flags(index) | Qt::ItemIsUserCheckable;
-    else if (column == QueriesHitColumns::QueryName)
-        return QAbstractTableModel::flags(index) | Qt::ItemIsEditable;
-    else if (column == QueriesHitColumns::Color || column == QueriesHitColumns::Paths)
-        return Qt::ItemIsEnabled;
-
-    return QAbstractTableModel::flags(index);
-}
-
-bool QueriesListModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-    if (!index.isValid())
-        return false;
-
-    auto *query = this->query(index);
-    if (!query)
-        return false;
-
-    auto column = QueriesHitColumns(index.column());
-    if (role == Qt::CheckStateRole && column == QueriesHitColumns::Show) { // Implement query shown checkbox
-        query->setShown(value.toBool());
-        emit dataChanged(index, QModelIndex()); // Here we need to refresh the whole row
-        return true;
-    } else if (role == Qt::EditRole && column == QueriesHitColumns::QueryName) { // Change query name
-        QString newName = value.toString();
-        if (newName != query->getName()) {
-            m_queries.get().renameQuery(query, newName);
-            emit dataChanged(index, index);
-            return true;
+    for (const auto &proxyIndex : selectedRows) {
+        auto sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (auto *query = m_queriesListModel->query(sourceIndex)) {
+            query->clearSearchResults();
         }
     }
 
-    return false;
+    updateTables();
+    emit changed();
 }
 
-Query *QueriesListModel::query(const QModelIndex &index) const {
-    if (!index.isValid() || index.row() >= m_queries.get().getQueryCount())
-        return nullptr;
-
-    return m_queries.get().query(index.row());
+void GraphSearchDialog::openFiltersDialog() {
+    HitFiltersDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        setFilterText();
+        updateTables();
+        emit changed();
+    }
 }
 
-void QueriesListModel::setColor(const QModelIndex &index, QColor color) {
-    if (!index.isValid())
-        return;
-
-    auto column = QueriesHitColumns(index.column());
-    if (column != QueriesHitColumns::Color)
-        return;
-
-    if (auto *query = this->query(index)) {
-        query->setColour(color);
-        emit dataChanged(index, index);
-    };
-}
-
+// PathButtonDelegate implementation
 void PathButtonDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
     const auto *model = qobject_cast<const QSortFilterProxyModel*>(index.model());
     auto *query = qobject_cast<const QueriesListModel*>(model->sourceModel())->query(model->mapToSource(index));
@@ -814,128 +571,206 @@ bool PathButtonDelegate::editorEvent(QEvent *event, QAbstractItemModel *model, c
     return QStyledItemDelegate::editorEvent(event, model, option, index);
 }
 
+// QueriesListModel implementation
+QueriesListModel::QueriesListModel(Queries &queries, QObject *parent)
+    : QAbstractTableModel(parent), m_queries(queries) {}
+
+int QueriesListModel::rowCount(const QModelIndex &) const {
+    return int(m_queries.get().getQueryCount());
+}
+
+int QueriesListModel::columnCount(const QModelIndex &) const {
+    return int(QueriesHitColumns::TotalHitColumns);
+}
+
+QVariant QueriesListModel::data(const QModelIndex &index, int role) const {
+    if (!index.isValid())
+        return QVariant();
+
+    auto *query = m_queries.get().query(index.row());
+    if (!query)
+        return QVariant();
+
+    auto column = QueriesHitColumns(index.column());
+
+    if (role == Qt::DisplayRole) {
+        switch (column) {
+            case QueriesHitColumns::QueryName:
+                return query->getName();
+            case QueriesHitColumns::Type:
+                return query->getSequenceType() == NUCLEOTIDE ? "Nucleotide" : "Protein";
+            case QueriesHitColumns::Length:
+                return QVariant::fromValue(qlonglong(query->getLength()));
+            case QueriesHitColumns::Hits:
+                return QVariant(int(query->getHits().size()));
+            case QueriesHitColumns::QueryCover:
+                return QString::number(query->fractionCoveredByHits() * 100.0, 'f', 1) + "%";
+            case QueriesHitColumns::Paths:
+                return query->getPaths().empty() ? "" : "View";
+            default:
+                return QVariant();
+        }
+    } else if (role == Qt::CheckStateRole && column == QueriesHitColumns::Show) {
+        return query->isShown() ? Qt::Checked : Qt::Unchecked;
+    } else if (role == Qt::DecorationRole && column == QueriesHitColumns::Color) {
+        return query->getColour();
+    }
+
+    return QVariant();
+}
+
+QVariant QueriesListModel::headerData(int section, Qt::Orientation orientation, int role) const {
+    if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
+        return QVariant();
+
+    switch (QueriesHitColumns(section)) {
+        case QueriesHitColumns::Color: return "Color";
+        case QueriesHitColumns::Show: return "Show";
+        case QueriesHitColumns::QueryName: return "Query name";
+        case QueriesHitColumns::Type: return "Type";
+        case QueriesHitColumns::Length: return "Length";
+        case QueriesHitColumns::Hits: return "Hits";
+        case QueriesHitColumns::QueryCover: return "Query cover";
+        case QueriesHitColumns::Paths: return "Paths";
+        default: return QVariant();
+    }
+}
+
+Qt::ItemFlags QueriesListModel::flags(const QModelIndex &index) const {
+    auto flags = QAbstractTableModel::flags(index);
+    if (QueriesHitColumns(index.column()) == QueriesHitColumns::Show)
+        flags |= Qt::ItemIsUserCheckable;
+    return flags;
+}
+
+bool QueriesListModel::setData(const QModelIndex &index, const QVariant &value, int role) {
+    if (!index.isValid())
+        return false;
+
+    if (role == Qt::CheckStateRole && QueriesHitColumns(index.column()) == QueriesHitColumns::Show) {
+        if (auto *query = m_queries.get().query(index.row())) {
+            query->setShown(value.toBool());
+            emit dataChanged(index, index);
+            return true;
+        }
+    }
+    return false;
+}
+
+void QueriesListModel::setColor(const QModelIndex &index, QColor color) {
+    if (!index.isValid())
+        return;
+    if (auto *query = m_queries.get().query(index.row())) {
+        query->setColour(color);
+        emit dataChanged(index, index);
+    }
+}
+
+Query *QueriesListModel::query(const QModelIndex &index) const {
+    if (!index.isValid())
+        return nullptr;
+    return m_queries.get().query(index.row());
+}
+
+// HitsListModel implementation
 HitsListModel::HitsListModel(Queries &queries, QObject *parent)
- : QAbstractTableModel(parent) {
+    : QAbstractTableModel(parent) {
     update(queries);
+}
+
+int HitsListModel::rowCount(const QModelIndex &) const {
+    return int(m_hits.size());
 }
 
 int HitsListModel::columnCount(const QModelIndex &) const {
     return int(HitsColumns::TotalHitColumns);
 }
 
-int HitsListModel::rowCount(const QModelIndex &) const {
-    return m_hits.size();
-}
-
 QVariant HitsListModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= m_hits.size())
-        return {};
+    if (!index.isValid() || index.row() >= int(m_hits.size()))
+        return QVariant();
 
+    auto *hit = m_hits[index.row()].hit;
     auto column = HitsColumns(index.column());
-    const auto &hit = m_hits[index.row()];
-    const auto &hitQuery = *hit->m_query;
 
-    if (role == Qt::BackgroundRole) {
-        if (hitQuery.isHidden()) // Hide disabled queries
-            return QColor(150, 150, 150);
-        else if (column == HitsColumns::Color)
-            return hitQuery.getColour();
+    if (role == Qt::DisplayRole) {
+        switch (column) {
+            case HitsColumns::QueryName:
+                return hit->m_query->getName();
+            case HitsColumns::NodeName:
+                return hit->m_node->getName();
+            case HitsColumns::PercentIdentity:
+                if (hit->m_percentIdentity >= 0)
+                    return QString::number(hit->m_percentIdentity, 'f', 1) + "%";
+                return "";
+            case HitsColumns::AlignmentLength:
+                return QVariant(hit->m_alignmentLength);
+            case HitsColumns::QueryCover:
+                return QString::number(hit->getQueryCoverageFraction() * 100.0, 'f', 1) + "%";
+            case HitsColumns::Mismatches:
+                if (hit->m_numberMismatches >= 0)
+                    return QVariant(hit->m_numberMismatches);
+                return "";
+            case HitsColumns::GapOpens:
+                if (hit->m_numberGapOpens >= 0)
+                    return QVariant(hit->m_numberGapOpens);
+                return "";
+            case HitsColumns::QueryStart:
+                return QVariant(hit->m_queryStart);
+            case HitsColumns::QueryEnd:
+                return QVariant(hit->m_queryEnd);
+            case HitsColumns::NodeStart:
+                return QVariant(hit->m_nodeStart);
+            case HitsColumns::NodeEnd:
+                return QVariant(hit->m_nodeEnd);
+            case HitsColumns::Evalue:
+                if (hit->m_eValue.isZero())
+                    return "";
+                return hit->m_eValue.asString(false);
+            case HitsColumns::BitScore:
+                if (hit->m_bitScore >= 0)
+                    return QString::number(hit->m_bitScore, 'f', 1);
+                return "";
+            default:
+                return QVariant();
+        }
+    } else if (role == Qt::DecorationRole && column == HitsColumns::Color) {
+        return m_hits[index.row()].query->getColour();
     }
 
-    if (role != Qt::DisplayRole)
-        return {};
-
-    switch (column) {
-        default:
-            return {};
-        case HitsColumns::QueryName:
-            return hitQuery.getName();
-        case HitsColumns::NodeName:
-            return hit->m_node->getName();
-        case HitsColumns::PercentIdentity:
-            if (hit->m_percentIdentity > 0)
-                return formatDoubleForDisplay(hit->m_percentIdentity, 2) + "%";
-            return "N/A";
-        case HitsColumns::AlignmentLength:
-            return hit->m_alignmentLength;
-        case HitsColumns::QueryCover:
-            return formatDoubleForDisplay(100.0 * hit->getQueryCoverageFraction(), 2) + "%";
-        case HitsColumns::Mismatches:
-            if (hit->m_numberMismatches < 0)
-                return "N/A";
-            return hit->m_numberMismatches;
-        case HitsColumns::GapOpens:
-            if (hit->m_numberGapOpens < 0)
-                return "N/A";
-            return hit->m_numberGapOpens;
-        case HitsColumns::QueryStart:
-            return hit->m_queryStart;
-        case HitsColumns::QueryEnd:
-            return hit->m_queryEnd;
-        case HitsColumns::NodeStart:
-            return hit->m_nodeStart;
-        case HitsColumns::NodeEnd:
-            return hit->m_nodeEnd;
-        case HitsColumns::Evalue:
-            if (std::isnan(hit->m_eValue.toDouble()))
-                return "N/A";
-            return hit->m_eValue.asString(false);
-        case HitsColumns::BitScore:
-            if (hit->m_bitScore < 0)
-                return "N/A";
-            return hit->m_bitScore;
-    }
-
-    return {};
+    return QVariant();
 }
 
 QVariant HitsListModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    if (role == Qt::TextAlignmentRole && orientation == Qt::Horizontal)
-        return Qt::AlignCenter;
-
-    if (role != Qt::DisplayRole)
-        return {};
-
-    if (orientation == Qt::Vertical)
-        return QString::number(section + 1);
+    if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
+        return QVariant();
 
     switch (HitsColumns(section)) {
-        default:
-            return {};
-        case HitsColumns::QueryName:
-            return "Query\nname";
-        case HitsColumns::NodeName:
-            return "Node\nname";
-        case HitsColumns::PercentIdentity:
-            return "Percent\nidentity";
-        case HitsColumns::AlignmentLength:
-            return "Alignment\nlength";
-        case HitsColumns::QueryCover:
-            return "Query\ncover";
-        case HitsColumns::Mismatches:
-            return "Mis-\nmatches";
-        case HitsColumns::GapOpens:
-            return "Gap\nopens";
-        case HitsColumns::QueryStart:
-            return "Query\nstart";
-        case HitsColumns::QueryEnd:
-            return "Query\nend";
-        case HitsColumns::NodeStart:
-            return "Node\nstart";
-        case HitsColumns::NodeEnd:
-            return "Node\nend";
-        case HitsColumns::Evalue:
-            return "E-\nvalue";
-        case HitsColumns::BitScore:
-            return "Bit\nscore";
+        case HitsColumns::Color: return "Color";
+        case HitsColumns::QueryName: return "Query";
+        case HitsColumns::NodeName: return "Node";
+        case HitsColumns::PercentIdentity: return "Identity";
+        case HitsColumns::AlignmentLength: return "Aln. len.";
+        case HitsColumns::QueryCover: return "Query cover";
+        case HitsColumns::Mismatches: return "Mism.";
+        case HitsColumns::GapOpens: return "Gaps";
+        case HitsColumns::QueryStart: return "Q. start";
+        case HitsColumns::QueryEnd: return "Q. end";
+        case HitsColumns::NodeStart: return "N. start";
+        case HitsColumns::NodeEnd: return "N. end";
+        case HitsColumns::Evalue: return "E-value";
+        case HitsColumns::BitScore: return "Bit score";
+        default: return QVariant();
     }
 }
 
 void HitsListModel::update(Queries &queries) {
-    startUpdate();
-    clear();
-
-    m_hits = queries.allHits();
-
-    endUpdate();
+    beginResetModel();
+    m_hits.clear();
+    for (auto *query : queries.queries()) {
+        for (auto &hit : query->getHits()) {
+            m_hits.push_back({query, hit.get()});
+        }
+    }
+    endResetModel();
 }

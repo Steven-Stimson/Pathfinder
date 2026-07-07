@@ -36,13 +36,6 @@ namespace Ui {
 class GraphSearchDialog;
 }
 
-enum SearchUiState {
-    GRAPH_DB_NOT_YET_BUILT, GRAPH_DB_BUILD_IN_PROGRESS,
-    GRAPH_DB_BUILT_BUT_NO_QUERIES,
-    READY_FOR_GRAPH_SEARCH, GRAPH_SEARCH_IN_PROGRESS,
-    GRAPH_SEARCH_COMPLETE
-};
-
 class PathButtonDelegate : public QStyledItemDelegate {
     Q_OBJECT
     Q_DISABLE_COPY(PathButtonDelegate)
@@ -100,7 +93,11 @@ public:
     void endUpdate() { endResetModel(); }
     bool empty() const { return m_hits.empty(); }
 
-    search::Query::Hits m_hits;
+    struct HitEntry {
+        search::Query *query;
+        const search::Hit *hit;
+    };
+    std::vector<HitEntry> m_hits;
 };
 
 class GraphSearchDialog : public QDialog {
@@ -118,29 +115,22 @@ private:
     QueriesListModel *m_queriesListModel;
     HitsListModel *m_hitsListModel;
 
-    void setUiStep(SearchUiState uiState);
     void clearHits();
-
-    void loadQueriesFromFile(const QString &fullFileName);
-    void buildDatabase(bool separateThread);
-    void runGraphSearches(bool separateThread);
     void setFilterText();
-    void setUiCaptions();
+    void updateTables();
+
+    // Import results from file
+    void importResultsFromFile(const QString &fullFileName);
+    int importPAF(const QString &fullFileName);
+    int importBlastTabular(const QString &fullFileName);
+    int importHmmerDomtbl(const QString &fullFileName);
 
 private slots:
     void afterWindowShow();
-    void buildGraphDatabaseInThread();
-    void loadQueriesFromFileButtonClicked();
-    void enterQueryManually();
+    void importResultsButtonClicked();
     void clearAllQueries();
     void clearSelectedQueries();
-    void runGraphSearchesInThread();
-    void fillTablesAfterGraphSearch();
-    void updateTables();
-    void searcherChanged();
-
-    void graphDatabaseBuildFinished(const QString& error);
-    void graphSearchFinished(const QString& error);
+    void updateTablesAndEmit();
 
     void openFiltersDialog();
 
