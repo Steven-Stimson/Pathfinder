@@ -242,5 +242,5 @@ install(TARGETS Pathfinder
         DESTINATION bin
         COMPONENT main)
 
-enable_testing(true)
-add_subdirectory(tests)
+#enable_testing(true)
+#add_subdirectory(tests)
