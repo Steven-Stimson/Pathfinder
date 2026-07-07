@@ -12,7 +12,7 @@ from src.node_id_mapper import NodeIdMapper
 from src.MIP_optimizer import MIPOptimizer
 from src.tangle import Tangle
 from src.input_parsing import (
-    parse_gfa, parse_gaf, read_tangle_nodes, get_oriented_boundaries, identify_tangle_nodes, new_identify_tangle_nodes, read_coverage_file,
+    parse_gfa, parse_gaf, parse_pairs, read_tangle_nodes, get_oriented_boundaries, identify_tangle_nodes, new_identify_tangle_nodes, read_coverage_file,
     coverage_from_graph, verify_coverage, calculate_median_coverage, clean_tips, DETECTED_LOW_MEDIAN_COVERAGE_VARIATION, DETECTED_HIGH_MEDIAN_COVERAGE_VARIATION
 )
 from src.graph_transformation import (
@@ -135,7 +135,9 @@ def print_final_path_info(best_path, pathOptimizer, tangle, alignment_scorer: Al
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Solve for integer multiplicities in a GFA tangle graph based on coverage.")
     parser.add_argument("--graph", required=False, help="Path to the GFA graph.")
-    parser.add_argument("--alignment", required=False, help="Path to a file with graphaligner alignment")
+    parser.add_argument("--alignment", required=False, nargs='+',
+                        help="Path(s) to alignment files. Supports .gaf, .pairs formats and .gz compression. "
+                             "Format is auto-detected by extension: .gaf/.gaf.gz for GAF format, .pairs/.pairs.gz for Hi-C pairs format.")
     parser.add_argument("--outdir", required=True, type=str, help="Output directory for all result files (will be created if it doesn't exist)")
     parser.add_argument("--boundary-nodes", required=True, type=str, help="Path to a file listing boundary node pairs, tab-separated (required for 2-2 tangles).")
 
@@ -150,7 +152,7 @@ def parse_arguments():
     parser.add_argument("--quality-threshold", type=int, default=20, help="Alignments with quality less than this will be filtered out, default 20")
     parser.add_argument("--basename", required=False, default="traversal", type=str, help="Basename for most of the output files, default `traversal`")
     parser.add_argument("--milp-time-limit", type=int, default=7200, help="Time limit for MILP solver in seconds (default: 7200 seconds = 2 hour).")
-    parser.add_argument("--output-gfa", action="store_true", default=False, help="Output traversal paths as GFA files (for BandagePro++ integration).")
+    parser.add_argument("--output-gfa", action="store_true", default=False, help="Output traversal paths as GFA files.")
     parser.add_argument("--output-mode", type=str, default="all", choices=["all", "merged", "per-path", "concatenated"],
                         help="GFA output mode: all, merged, per-path, or concatenated (default: all).")
     args = parser.parse_args()
@@ -227,8 +229,34 @@ def main():
     
     if args.alignment:
         filtered_alignment_file = os.path.join(args.outdir, f"{args.basename}.q{args.quality_threshold}.used_alignments.gaf")
-        alignments = parse_gaf(args.alignment, used_or_nodes, filtered_alignment_file, args.quality_threshold, node_id_mapper)
+        all_alignments = []
+
+        for align_file in args.alignment:
+            # Auto-detect format by extension
+            base_name = os.path.basename(align_file).lower()
+            if base_name.endswith('.pairs.gz') or base_name.endswith('.pairs'):
+                logging.info(f"Detected pairs format: {align_file}")
+                file_alignments = parse_pairs(align_file, used_or_nodes, None, args.quality_threshold, node_id_mapper, original_graph)
+            elif base_name.endswith('.gaf.gz') or base_name.endswith('.gaf'):
+                logging.info(f"Detected GAF format: {align_file}")
+                file_alignments = parse_gaf(align_file, used_or_nodes, None, args.quality_threshold, node_id_mapper)
+            else:
+                logging.warning(f"Unknown alignment file format: {align_file}, skipping")
+                continue
+
+            logging.info(f"  Loaded {len(file_alignments)} paths from {align_file}")
+            all_alignments.extend(file_alignments)
+
+        # Write filtered alignments
+        if filtered_alignment_file and all_alignments:
+            with open(filtered_alignment_file, 'w') as f:
+                for i, path in enumerate(all_alignments):
+                    path_str = ''.join(f"{'>' if n > 0 else '<'}{node_id_mapper.node_id_to_name_safe(abs(n))}" for n in path)
+                    f.write(f"alignment_{i}\t0\t0\t0\t+\t{path_str}\t0\t0\t0\t0\t0\t60\n")
+
+        alignments = all_alignments
         alignment_scorer = AlignmentScorer(alignments, original_graph, node_id_mapper)
+        logging.info(f"Total alignments loaded: {len(alignments)}")
     else:
         logging.info("No alignment file provided, skipping alignment-based scoring")
         alignments = []
@@ -284,12 +312,12 @@ def main():
         logging.info(f"Copied boundary nodes file to {dest}")
 
 def write_gfa_output(args, best_path, pathOptimizer, tangle):
-    """Write traversal paths as GFA files for BandagePro++ integration.
+    """Write traversal paths as GFA files for Pathfinder integration.
 
     Output modes:
-      - all / concatenated: writes traversal_concatenated.gfa (single path concatenated)
-      - merged: writes traversal.gfa (merged segmented path)
-      - per-path: writes traversal_path0.gfa, traversal_path1.gfa, ... (one per segment)
+      - all / concatenated: writes {basename}_path.concatenated.gfa (single path concatenated)
+      - merged: writes {basename}_path.merged.gfa (merged segmented path)
+      - per-path: writes {basename}_path0.gfa, {basename}_path1.gfa, ... (one per segment)
 
     Node naming convention:
       - Non-shared nodes keep original name (e.g., utg001259l)
@@ -406,7 +434,7 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
             path_lines.append(f"P\t{path_name}\t{','.join(path_segments)}\t*")
 
         # Write concatenated GFA
-        gfa_path = os.path.join(outdir, f"{basename}_concatenated.gfa")
+        gfa_path = os.path.join(outdir, f"{basename}_path.concatenated.gfa")
         with open(gfa_path, 'w') as f:
             f.write("H\tVN:Z:1.0\n")
             # Write all unique S-lines with full tags
@@ -482,7 +510,7 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
 
     # In merged mode: one segment per original edge with links
     if mode in ("all", "merged"):
-        gfa_path = os.path.join(outdir, "traversal.gfa")
+        gfa_path = os.path.join(outdir, f"{basename}_path.merged.gfa")
         with open(gfa_path, 'w') as f:
             f.write("H\tVN:Z:1.0\n")
             for path_idx, path in enumerate(paths):

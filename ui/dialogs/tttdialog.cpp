@@ -38,12 +38,15 @@ TTTDialog::TTTDialog(QWidget *parent)
         binName = "ttt.exe";
 #endif
         QStringList searchPaths = {
-            // Packaged app: TTT next to the executable
-            QCoreApplication::applicationDirPath() + "/Pathfinder/TTT/" + binName,
-            // Build tree / AppImage: one level up
+            // Build tree: PathfinderTTT next to the executable
+            QCoreApplication::applicationDirPath() + "/../PathfinderTTT/" + binName,
+            // Packaged app: PathfinderTTT next to the executable
+            QCoreApplication::applicationDirPath() + "/PathfinderTTT/" + binName,
+            // macOS .app bundle: Contents/MacOS -> Contents/PathfinderTTT
+            QCoreApplication::applicationDirPath() + "/../../PathfinderTTT/" + binName,
+            // Legacy paths
             QCoreApplication::applicationDirPath() + "/../Pathfinder/TTT/" + binName,
-            // macOS .app bundle: Contents/MacOS -> Contents/Pathfinder/TTT
-            QCoreApplication::applicationDirPath() + "/../../Pathfinder/TTT/" + binName,
+            QCoreApplication::applicationDirPath() + "/Pathfinder/TTT/" + binName,
         };
         for (const auto &p : searchPaths) {
             QString absPath = QFileInfo(p).absoluteFilePath();
@@ -86,6 +89,10 @@ void TTTDialog::loadSettings()
     ui->initialPathsSpinBox->setValue(g_settings->tttNumInitialPaths > 0 ? g_settings->tttNumInitialPaths : 10);
     ui->maxIterSpinBox->setValue(g_settings->tttMaxIterations > 0 ? g_settings->tttMaxIterations : 100000);
     ui->outputModeComboBox->setCurrentIndex(g_settings->tttOutputMode);
+    ui->medianUniqueSpinBox->setValue(g_settings->tttMedianUnique);
+    ui->earlyStoppingSpinBox->setValue(g_settings->tttEarlyStoppingLimit > 0 ? g_settings->tttEarlyStoppingLimit : 15000);
+    ui->logLevelComboBox->setCurrentIndex(g_settings->tttLogLevel);
+    ui->basenameEdit->setText(g_settings->tttBasename.isEmpty() ? "traversal" : g_settings->tttBasename);
 }
 
 void TTTDialog::saveSettings()
@@ -97,6 +104,10 @@ void TTTDialog::saveSettings()
     g_settings->tttNumInitialPaths = ui->initialPathsSpinBox->value();
     g_settings->tttMaxIterations = ui->maxIterSpinBox->value();
     g_settings->tttOutputMode = ui->outputModeComboBox->currentIndex();
+    g_settings->tttMedianUnique = ui->medianUniqueSpinBox->value();
+    g_settings->tttEarlyStoppingLimit = ui->earlyStoppingSpinBox->value();
+    g_settings->tttLogLevel = ui->logLevelComboBox->currentIndex();
+    g_settings->tttBasename = ui->basenameEdit->text();
 }
 
 void TTTDialog::browseGaf()
@@ -251,7 +262,22 @@ void TTTDialog::runTTT()
          << "--quality-threshold" << QString::number(ui->qualityThresholdSpinBox->value())
          << "--milp-time-limit" << QString::number(ui->mipTimeLimitSpinBox->value())
          << "--num-initial-paths" << QString::number(ui->initialPathsSpinBox->value())
-         << "--max-iterations" << QString::number(ui->maxIterSpinBox->value());
+         << "--max-iterations" << QString::number(ui->maxIterSpinBox->value())
+         << "--early-stopping-limit" << QString::number(ui->earlyStoppingSpinBox->value());
+
+    // Median unique coverage (0 = auto-detect)
+    double medianUnique = ui->medianUniqueSpinBox->value();
+    if (medianUnique > 0)
+        args << "--median-unique" << QString::number(medianUnique);
+
+    // Log level
+    QString logLevel = ui->logLevelComboBox->currentText();
+    args << "--log-level" << logLevel;
+
+    // Basename
+    QString basename = ui->basenameEdit->text().trimmed();
+    if (!basename.isEmpty())
+        args << "--basename" << basename;
 
     if (!ui->gafPathEdit->text().isEmpty() && QFile::exists(ui->gafPathEdit->text()))
         args << "--alignment" << ui->gafPathEdit->text();
@@ -269,6 +295,8 @@ void TTTDialog::runTTT()
 
     // Always request GFA output from the ttt binary itself
     args << "--output-gfa";
+
+    // Output mode should be the last parameter
     QString modeStr;
     int mode = ui->outputModeComboBox->currentIndex();
     if (mode == 0)      modeStr = "all";
@@ -330,23 +358,26 @@ void TTTDialog::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
 
     if (exitCode == 0) {
         QDir outDir(m_outputDir);
+        QString basename = ui->basenameEdit->text().trimmed();
+        if (basename.isEmpty())
+            basename = "traversal";
 
         // Load the appropriate GFA based on output mode
         int mode = ui->outputModeComboBox->currentIndex();
         if (mode == 0 || mode == 3) {
             // All or Concatenated: prefer concatenated
-            QString catGfa = m_outputDir + "/traversal_concatenated.gfa";
+            QString catGfa = m_outputDir + "/" + basename + "_path.concatenated.gfa";
             if (QFile::exists(catGfa)) {
                 m_outputGfaPath = catGfa;
             }
         } else if (mode == 1) {
             // Merged
-            QString mergedGfa = m_outputDir + "/traversal.gfa";
+            QString mergedGfa = m_outputDir + "/" + basename + "_path.merged.gfa";
             if (QFile::exists(mergedGfa))
                 m_outputGfaPath = mergedGfa;
         } else {
             // Per-path: load path0
-            QString path0Gfa = m_outputDir + "/traversal_path0.gfa";
+            QString path0Gfa = m_outputDir + "/" + basename + "_path0.gfa";
             if (QFile::exists(path0Gfa))
                 m_outputGfaPath = path0Gfa;
         }

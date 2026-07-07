@@ -183,7 +183,11 @@ def parse_gaf(gaf_file, interesting_nodes, filtered_file, quality_threshold, nod
     if filtered_file:
         out_file = open(filtered_file, 'w')
     logging.debug(f"Interesting nodes used for alignment {interesting_nodes}")
-    with open(gaf_file, 'r') as file:
+
+    import gzip
+    open_func = gzip.open if gaf_file.endswith('.gz') else open
+
+    with open_func(gaf_file, 'rt') as file:
         for line in file:
             parts = line.strip().split()
             path_id = parts[0]
@@ -197,13 +201,176 @@ def parse_gaf(gaf_file, interesting_nodes, filtered_file, quality_threshold, nod
             nodes = parse_gaf_string(parts[5], node_mapper)
 
             filtered_nodes = filter_gaf_nodes(nodes, interesting_nodes)
-            
+
             #reverse_complement would be added in AlignmentScorer
             if len(filtered_nodes) > 1:
                 res.append(filtered_nodes)
                 if filtered_file:
                     out_file.write(line)
-    return  res 
+    return  res
+
+def build_node_position_index(original_graph, node_mapper):
+    """Build a cumulative position index for nodes to map genomic coordinates to nodes.
+
+    Returns:
+        dict: {node_id: (start_pos, end_pos)} for each node
+    """
+    node_positions = {}
+    current_pos = 0
+
+    # Sort nodes by name for consistent ordering
+    sorted_nodes = sorted(original_graph.nodes(), key=lambda x: abs(x))
+
+    for node_id in sorted_nodes:
+        if node_id < 0:  # Skip reverse complement nodes
+            continue
+        node_length = original_graph.nodes[node_id].get('length', 0)
+        if node_length > 0:
+            node_positions[node_id] = (current_pos, current_pos + node_length)
+            current_pos += node_length
+
+    return node_positions
+
+def find_node_at_position(node_positions, pos, node_mapper):
+    """Find which node contains the given genomic position.
+
+    Args:
+        node_positions: dict from build_node_position_index
+        pos: genomic position (1-based)
+        node_mapper: NodeIdMapper instance
+
+    Returns:
+        int: node_id if found, None otherwise
+    """
+    for node_id, (start, end) in node_positions.items():
+        if start <= pos < end:
+            return node_id
+    return None
+
+def parse_pairs(pairs_file, interesting_nodes, filtered_file, quality_threshold, node_mapper, original_graph):
+    """Parse pair format (Hi-C) and convert to alignment paths.
+
+    Pair format columns:
+    1. readID
+    2. chrom1 (node name)
+    3. pos1 (position within node)
+    4. chrom2 (node name)
+    5. pos2 (position within node)
+    6. strand1 (+/-)
+    7. strand2 (+/-)
+    8. pair_type (optional)
+    9. mapq1 (optional)
+    10. mapq2 (optional)
+
+    Returns:
+        list: list of paths, where each path is a list of node_ids
+    """
+    res = []
+    if filtered_file:
+        out_file = open(filtered_file, 'w')
+
+    logging.debug(f"Interesting nodes used for pair alignment {interesting_nodes}")
+
+    # Build adjacency graph from pairs
+    adj = {}  # node -> [(neighbor, weight), ...]
+
+    import gzip
+    open_func = gzip.open if pairs_file.endswith('.gz') else open
+
+    with open_func(pairs_file, 'rt') as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+
+            parts = line.strip().split('\t')
+            if len(parts) < 7:
+                continue
+
+            read_id = parts[0]
+            chrom1 = parts[1]
+            pos1 = int(parts[2])
+            chrom2 = parts[3]
+            pos2 = int(parts[4])
+            strand1 = parts[5]
+            strand2 = parts[6]
+
+            # Get mapq if available
+            mapq1 = int(parts[8]) if len(parts) > 8 else 60
+            mapq2 = int(parts[9]) if len(parts) > 9 else 60
+            min_mapq = min(mapq1, mapq2)
+
+            if min_mapq < quality_threshold:
+                continue
+
+            # Parse node names to node IDs
+            node1 = node_mapper.parse_node_id(chrom1)
+            node2 = node_mapper.parse_node_id(chrom2)
+
+            if node1 is None or node2 is None:
+                logging.warning(f"Could not parse node names: {chrom1}, {chrom2}")
+                continue
+
+            # Apply strand orientation
+            if strand1 == '-':
+                node1 = -node1
+            if strand2 == '-':
+                node2 = -node2
+
+            # Skip self-loops
+            if abs(node1) == abs(node2):
+                continue
+
+            # Add to adjacency graph
+            if node1 not in adj:
+                adj[node1] = {}
+            if node2 not in adj:
+                adj[node2] = {}
+
+            adj[node1][node2] = adj[node1].get(node2, 0) + 1
+            adj[node2][node1] = adj[node2].get(node1, 0) + 1
+
+    # Chain pairs into paths
+    visited = set()
+
+    for start_node in adj:
+        if start_node in visited:
+            continue
+
+        # Build path by following highest-weight edges
+        path = [start_node]
+        visited.add(start_node)
+        current = start_node
+
+        while current in adj:
+            # Find the best unvisited neighbor
+            neighbors = adj[current]
+            best_neighbor = None
+            best_weight = 0
+
+            for neighbor, weight in neighbors.items():
+                if neighbor not in visited and weight > best_weight:
+                    best_neighbor = neighbor
+                    best_weight = weight
+
+            if best_neighbor is None:
+                break
+
+            path.append(best_neighbor)
+            visited.add(best_neighbor)
+            current = best_neighbor
+
+        # Filter path to only include interesting nodes
+        filtered_path = filter_gaf_nodes(path, interesting_nodes)
+
+        if len(filtered_path) > 1:
+            res.append(filtered_path)
+            if filtered_file:
+                # Write as GAF format for compatibility
+                path_str = ''.join(f"{'>' if n > 0 else '<'}{node_mapper.node_id_to_name_safe(abs(n))}" for n in filtered_path)
+                out_file.write(f"{read_id}\t0\t0\t0\t+\t{path_str}\t0\t0\t0\t0\t0\t60\n")
+
+    logging.info(f"Parsed {len(res)} paths from pairs file")
+    return res
 
 def node_to_tangle(directed_graph, length_cutoff, target_node, node_mapper):
     """

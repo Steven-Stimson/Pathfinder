@@ -28,6 +28,7 @@
 #include "ui/dialogs/logandownloaddialog.h"
 #include "ui/dialogs/myprogressdialog.h"
 #include "ui/dialogs/pathspecifydialog.h"
+#include <QTimer>
 #include "ui/dialogs/changenodenamedialog.h"
 #include "ui/dialogs/changenodedepthdialog.h"
 #include "ui/dialogs/graphinfodialog.h"
@@ -3303,8 +3304,15 @@ void MainWindow::openTTTDialog()
     auto *dialog = new TTTDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &QDialog::accepted, this, [this, dialog]() {
-        if (!dialog->outputGfaPath().isEmpty())
+        if (!dialog->outputGfaPath().isEmpty()) {
             loadGraph(dialog->outputGfaPath());
+            // Auto-draw graph after loading TTT output
+            QTimer::singleShot(500, this, [this]() {
+                if (g_assemblyGraph && !g_assemblyGraph->m_deBruijnGraphNodes.empty()) {
+                    drawGraph();
+                }
+            });
+        }
     });
     dialog->show();
 }

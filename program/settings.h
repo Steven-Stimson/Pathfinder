@@ -222,6 +222,10 @@ public:
     int tttNumInitialPaths = 10;
     int tttMaxIterations = 100000;
     int tttOutputMode = 0;  // 0=All, 1=Merged, 2=Per-path
+    double tttMedianUnique = 0.0;  // 0 = auto-detect
+    int tttEarlyStoppingLimit = 15000;
+    int tttLogLevel = 1;  // 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
+    QString tttBasename = "traversal";
 
     //These are the optional BLAST hit filters: whether they are used and
     //what their values are.

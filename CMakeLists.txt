@@ -214,13 +214,25 @@ else()
     set(GLPSOL_BINARY_NAME "glpsol")
 endif()
 add_custom_command(TARGET Pathfinder POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Pathfinder>/../Pathfinder/TTT"
+    # Use PathfinderTTT directory to avoid conflict with Pathfinder binary
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${TTT_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:Pathfinder>/../Pathfinder/TTT/${TTT_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT/${TTT_BINARY_NAME}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
-        "$<TARGET_FILE_DIR:Pathfinder>/../Pathfinder/TTT/${GLPSOL_BINARY_NAME}"
+        "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT/${GLPSOL_BINARY_NAME}"
+    # Copy TTT Python source files
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/TTT.py"
+        "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT/TTT.py"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/requirements.txt"
+        "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT/requirements.txt"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT/src"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder/TTT/src"
+        "$<TARGET_FILE_DIR:Pathfinder>/../PathfinderTTT/src"
 )
 
 add_subdirectory(resources)
