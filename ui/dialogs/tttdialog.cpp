@@ -101,7 +101,7 @@ void TTTDialog::saveSettings()
 
 void TTTDialog::browseGaf()
 {
-    QString path = QFileDialog::getOpenFileName(this, "Select GAF Alignment File",
+    QString path = QFileDialog::getOpenFileName(this, "Select Alignment File",
                                                  QString(), "All files (*)");
     if (!path.isEmpty())
         ui->gafPathEdit->setText(path);
