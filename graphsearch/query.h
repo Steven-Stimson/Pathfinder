@@ -84,6 +84,9 @@ namespace search {
 
         void setColour(QColor newColour) { m_colour = newColour; }
         void setShown(bool newShown) { m_shown = newShown; }
+        void setSourceFile(const QString &sourceFile) { m_sourceFile = sourceFile; }
+        void setSequence(const QString &sequence) { m_sequence = sequence; }
+        QString getSourceFile() const { return m_sourceFile; }
     private:
         QString m_name;
         QString m_sequence;
@@ -94,6 +97,7 @@ namespace search {
         bool m_shown = true;
         QColor m_colour;
         std::vector<QueryPath> m_paths;
+        QString m_sourceFile;
 
         void autoSetSequenceType();
     };

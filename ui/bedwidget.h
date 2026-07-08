@@ -4,10 +4,14 @@
 
 #include <QWidget>
 
+class BedDialog;
 
 class BedWidget : public QWidget {
 public:
     explicit BedWidget(QWidget *parent);
+
+private:
+    BedDialog *m_bedDialog;
 };
 
 

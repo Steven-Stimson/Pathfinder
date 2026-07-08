@@ -120,7 +120,7 @@ private:
     void updateTables();
 
     // Import results from file
-    void importResultsFromFile(const QString &fullFileName);
+    int importResultsFromFile(const QString &fullFileName);
     int importPAF(const QString &fullFileName);
     int importBlastTabular(const QString &fullFileName);
     int importHmmerDomtbl(const QString &fullFileName);

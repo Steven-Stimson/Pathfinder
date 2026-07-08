@@ -422,9 +422,9 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
                     if edge_tuple not in all_edges:
                         all_edges.append(edge_tuple)
 
-                # Build path segment for P-line (use > or < as prefix)
-                orient_prefix = '>' if orientation == '+' else '<'
-                path_segments.append(f"{orient_prefix}{original_name}")
+                # Build path segment for P-line (use + or - as suffix per GFA spec)
+                orient_suffix = '+' if orientation == '+' else '-'
+                path_segments.append(f"{original_name}{orient_suffix}")
                 prev_seg_name = original_name
                 prev_edge = edge.original_node
                 prev_orientation = orientation

@@ -2740,7 +2740,7 @@ single node style:</string>
             <property name="toolTip">
              <string>When Pathfinder is set to the 'Uniform colour' option, this colour is used for limited graph scopes:&lt;ul&gt;
                                                       &lt;li&gt;When the graph scope is set to 'Around node(s)', this colour is used for the user-specified nodes.&lt;/li&gt;
-                                                      &lt;li&gt;When the graph scope is set to 'Around BLAST hit(s)', this colour is used for nodes that contain at least one BLAST hit.&lt;/li&gt;&lt;/ul&gt;</string>
+                                                      &lt;li&gt;When the graph scope is set to 'Around graph search hit(s)', this colour is used for nodes that contain at least one graph search hit.&lt;/li&gt;&lt;/ul&gt;</string>
             </property>
            </widget>
           </item>
@@ -3395,7 +3395,7 @@ single node style:</string>
           </font>
          </property>
          <property name="text">
-          <string>BLAST colour scheme</string>
+          <string>Graph search colour scheme</string>
          </property>
         </widget>
        </item>
@@ -3409,7 +3409,7 @@ single node style:</string>
        <item>
         <widget class="QLabel" name="blastColourSchemeDescriptionLabel">
          <property name="text">
-          <string>These settings control the node colours when either of the 'BLAST hits' colour schemes are used.</string>
+          <string>These settings control the node colours when either of the 'Graph search hits' colour schemes are used.</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignJustify|Qt::AlignVCenter</set>
@@ -3449,7 +3449,7 @@ single node style:</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>When Pathfinder is set to the 'Colour using BLAST hits' option, this colour is used for nodes that do not have any BLAST hits. It is also used for any region of a node without BLAST hits, even if there are BLAST hits in other regions of that node.</string>
+             <string>When Pathfinder is set to the 'Colour using graph search hits' option, this colour is used for nodes that do not have any graph search hits. It is also used for any region of a node without graph search hits, even if there are graph search hits in other regions of that node.</string>
             </property>
            </widget>
           </item>
@@ -3494,7 +3494,7 @@ single node style:</string>
              </sizepolicy>
             </property>
             <property name="text">
-             <string>No BLAST hits:</string>
+             <string>No graph search hits:</string>
             </property>
            </widget>
           </item>
@@ -3906,7 +3906,7 @@ single node style:</string>
           </font>
          </property>
          <property name="text">
-          <string>BLAST query paths</string>
+          <string>Graph search query paths</string>
          </property>
         </widget>
        </item>
@@ -3920,7 +3920,7 @@ single node style:</string>
        <item>
         <widget class="QLabel" name="blastQueryPathsDescriptionLabel">
          <property name="text">
-          <string>These settings control how Pathfinder searches for query paths after conducting a BLAST search. Query paths that fail to meet these criteria will be excluded. It is necessary to rerun a BLAST search to see the effect of changing these settings.</string>
+          <string>These settings control how Pathfinder searches for query paths after conducting a graph search. Query paths that fail to meet these criteria will be excluded. It is necessary to rerun a graph search to see the effect of changing these settings.</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignJustify|Qt::AlignVCenter</set>
@@ -3979,8 +3979,8 @@ single node style:</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is a minimum value for the fraction of a BLAST query which is covered by the hits in a BLAST query path. Paths with hits that cover less of the query than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                                   Set to a higher value to make BLAST query paths more stringent.</string>
+             <string>This is a minimum value for the fraction of a graph search query which is covered by the hits in a graph search query path. Paths with hits that cover less of the query than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                                   Set to a higher value to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>
@@ -4195,8 +4195,8 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is a minimum value for the relative length between a BLAST query and its path in the graph. Paths with a relative length less than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                                 Set to a value closer to 100% to make BLAST query paths more stringent.</string>
+             <string>This is a minimum value for the relative length between a graph search query and its path in the graph. Paths with a relative length less than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                                 Set to a value closer to 100% to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>
@@ -4215,8 +4215,8 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is a maximum value for the relative length between a BLAST query and its path in the graph. Paths with a relative length greater than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                                 Set to a value closer to 100% to make BLAST query paths more stringent.</string>
+             <string>This is a maximum value for the relative length between a graph search query and its path in the graph. Paths with a relative length greater than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                                 Set to a value closer to 100% to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>
@@ -4235,8 +4235,8 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is the minimum length difference (in bases) between a BLAST query and its path in the graph.  Paths with a length difference less than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                                      Set to a value closer to 0 to make BLAST query paths more stringent.</string>
+             <string>This is the minimum length difference (in bases) between a graph search query and its path in the graph.  Paths with a length difference less than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                                      Set to a value closer to 0 to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>
@@ -4271,8 +4271,8 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is a minimum value for the mean of the percent identity for the hits in a BLAST query path, weighted by the hits' lengths. Paths with a mean hit percent identity less than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                                Set to a higher value to make BLAST query paths more stringent.</string>
+             <string>This is a minimum value for the mean of the percent identity for the hits in a graph search query path, weighted by the hits' lengths. Paths with a mean hit percent identity less than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                                Set to a higher value to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>
@@ -4291,7 +4291,7 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This controls the maximum number of nodes in BLAST query paths.&lt;br&gt;&lt;br&gt;
+             <string>This controls the maximum number of nodes in graph search query paths.&lt;br&gt;&lt;br&gt;
                                           A higher value will allow for paths containing more nodes, at a performance cost.</string>
             </property>
            </widget>
@@ -4311,8 +4311,8 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is a maximum value for the product of the e-values of all the hits in a BLAST query path. Paths with an e-value product greater than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                              Set to a lower value to make BLAST query paths more stringent.</string>
+             <string>This is a maximum value for the product of the e-values of all the hits in a graph search query path. Paths with an e-value product greater than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                              Set to a lower value to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>
@@ -4331,8 +4331,8 @@ discrepancy (bases):</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>This is a minimum value for the fraction of a BLAST query which is covered by a BLAST query path. Paths that cover less of the query than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
-                                                   Set to a higher value to make BLAST query paths more stringent.</string>
+             <string>This is a minimum value for the fraction of a graph search query which is covered by a graph search query path. Paths that cover less of the query than this setting will not be included in the query's paths.&lt;br&gt;&lt;br&gt;
+                                                   Set to a higher value to make graph search query paths more stringent.</string>
             </property>
            </widget>
           </item>

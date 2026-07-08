@@ -20,11 +20,18 @@
 #include "ui_querypathsdialog.h"
 
 #include "graphsearch/query.h"
+#include "graph/graphicsitemnode.h"
+#include "graph/graphicsitemedge.h"
+#include "graph/debruijnnode.h"
+#include "graph/debruijnedge.h"
 #include "program/globals.h"
 #include "program/memory.h"
+#include "ui/bandagegraphicsview.h"
 
 #include <QSortFilterProxyModel>
 #include <QClipboard>
+#include <QMenu>
+#include <QAction>
 
 using namespace search;
 
@@ -47,10 +54,11 @@ enum class QueryPathsColumns : int {
 
 QueryPathsDialog::QueryPathsDialog(Query *query, QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::QueryPathsDialog)
+    ui(new Ui::QueryPathsDialog),
+    m_query(query)
 {
     ui->setupUi(this);
-    setWindowFlags(windowFlags() | Qt::Tool);
+    setWindowFlags(windowFlags() | Qt::Tool | Qt::WindowMinMaxButtonsHint);
 
     connect(this, SIGNAL(rejected()), this, SLOT(hidden()));
 
@@ -76,6 +84,11 @@ QueryPathsDialog::QueryPathsDialog(Query *query, QWidget *parent) :
     ui->tableView->setSortingEnabled(true);
     ui->tableView->horizontalHeader()->setStretchLastSection(true);
     ui->tableView->resizeColumnsToContents();
+
+    // Enable context menu
+    ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableView, &QTableView::customContextMenuRequested,
+            this, &QueryPathsDialog::showContextMenu);
 
     connect(ui->tableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -272,4 +285,61 @@ bool CopyPathSequenceDelegate::editorEvent(QEvent *event, QAbstractItemModel *mo
     }
 
     return QStyledItemDelegate::editorEvent(event, model, option, index);
+}
+
+void QueryPathsDialog::showContextMenu(const QPoint &pos) {
+    QModelIndex index = ui->tableView->indexAt(pos);
+    if (!index.isValid())
+        return;
+
+    auto *proxyModel = qobject_cast<QSortFilterProxyModel*>(ui->tableView->model());
+    auto sourceIndex = proxyModel->mapToSource(index);
+    if (sourceIndex.row() >= static_cast<int>(m_queryPathsModel->m_queryPaths.size()))
+        return;
+
+    const auto &queryPath = m_queryPathsModel->m_queryPaths[sourceIndex.row()];
+
+    QMenu menu(this);
+
+    QAction *selectPathAction = menu.addAction("Select path in graph");
+    QAction *copyPathAction = menu.addAction("Copy path");
+
+    QAction *selectedAction = menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
+    if (!selectedAction)
+        return;
+
+    if (selectedAction == selectPathAction) {
+        // Select both nodes and edges in this path
+        const auto &path = queryPath.getPath();
+        const auto &nodes = path.nodes();
+        const auto &edges = path.edges();
+
+        if (!nodes.empty()) {
+            // Clear current selection
+            if (g_graphicsView && g_graphicsView->scene()) {
+                g_graphicsView->scene()->clearSelection();
+
+                // Select each node in the path
+                for (auto *node : nodes) {
+                    GraphicsItemNode *graphicsItemNode = node->getGraphicsItemNode();
+                    if (graphicsItemNode) {
+                        graphicsItemNode->setSelected(true);
+                    }
+                }
+
+                // Select each edge in the path
+                for (auto *edge : edges) {
+                    GraphicsItemEdge *graphicsItemEdge = edge->getGraphicsItemEdge();
+                    if (graphicsItemEdge) {
+                        graphicsItemEdge->setSelected(true);
+                    }
+                }
+
+                g_graphicsView->viewport()->update();
+            }
+        }
+    } else if (selectedAction == copyPathAction) {
+        // Copy path string to clipboard
+        QApplication::clipboard()->setText(queryPath.getPath().getString(true));
+    }
 }

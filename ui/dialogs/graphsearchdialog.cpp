@@ -84,7 +84,7 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
 
     m_graphSearch = search::GraphSearch::get(search::BLAST, QDir::temp(), this);
 
-    setWindowFlags(windowFlags() | Qt::Tool);
+    setWindowFlags(windowFlags() | Qt::Tool | Qt::WindowMinMaxButtonsHint);
 
     m_queriesListModel = new QueriesListModel(m_graphSearch->queries(),
                                               ui->blastQueriesTable);
@@ -118,6 +118,29 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
     connect(ui->importResultsButton, SIGNAL(clicked()), this, SLOT(importResultsButtonClicked()));
     connect(ui->filtersButton, SIGNAL(clicked()), this, SLOT(openFiltersDialog()));
     connect(ui->closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+
+    // Select All and Invert Selection buttons for queries
+    connect(ui->selectAllQueriesButton, &QPushButton::clicked, [this]() {
+        auto &queries = m_graphSearch->queries();
+        for (size_t i = 0; i < queries.getQueryCount(); ++i) {
+            if (auto *query = queries[i]) {
+                query->setShown(true);
+            }
+        }
+        updateTables();
+        emit changed();
+    });
+
+    connect(ui->invertSelectionQueriesButton, &QPushButton::clicked, [this]() {
+        auto &queries = m_graphSearch->queries();
+        for (size_t i = 0; i < queries.getQueryCount(); ++i) {
+            if (auto *query = queries[i]) {
+                query->setShown(!query->isShown());
+            }
+        }
+        updateTables();
+        emit changed();
+    });
 
     // Selection change handler (for future use)
     connect(ui->blastQueriesTable->selectionModel(),
@@ -230,7 +253,7 @@ void GraphSearchDialog::updateTablesAndEmit() {
 }
 
 void GraphSearchDialog::importResultsButtonClicked() {
-    QString fullFileName = QFileDialog::getOpenFileName(
+    QStringList fileNames = QFileDialog::getOpenFileNames(
         this,
         "Import Search Results",
         g_memory->rememberedPath,
@@ -240,59 +263,59 @@ void GraphSearchDialog::importResultsButtonClicked() {
         "HMMER domtbl (*.domtbl *.tbl);;"
         "All files (*)");
 
-    if (fullFileName.isEmpty())
+    if (fileNames.isEmpty())
         return;
 
-    importResultsFromFile(fullFileName);
+    int totalHitsImported = 0;
+    for (const QString &fullFileName : fileNames) {
+        totalHitsImported += importResultsFromFile(fullFileName);
+    }
+
+    if (!fileNames.isEmpty()) {
+        g_memory->rememberedPath = QFileInfo(fileNames.first()).absolutePath();
+    }
 }
 
-void GraphSearchDialog::importResultsFromFile(const QString &fullFileName) {
+int GraphSearchDialog::importResultsFromFile(const QString &fullFileName) {
     // Auto-detect format from extension
     QString ext = QFileInfo(fullFileName).suffix().toLower();
     int hitsImported = 0;
 
     if (ext == "paf") {
-        ui->searcherComboBox->setCurrentIndex(0); // Minimap2
         hitsImported = importPAF(fullFileName);
     } else if (ext == "blast" || ext == "out") {
-        ui->searcherComboBox->setCurrentIndex(1); // BLAST
         hitsImported = importBlastTabular(fullFileName);
     } else if (ext == "domtbl" || ext == "tbl") {
-        ui->searcherComboBox->setCurrentIndex(2); // HMMER
         hitsImported = importHmmerDomtbl(fullFileName);
     } else {
         // Try PAF first, then BLAST
         hitsImported = importPAF(fullFileName);
         if (hitsImported == 0) {
             hitsImported = importBlastTabular(fullFileName);
-            if (hitsImported > 0)
-                ui->searcherComboBox->setCurrentIndex(1);
-        } else {
-            ui->searcherComboBox->setCurrentIndex(0);
         }
     }
 
     if (hitsImported > 0) {
-        // Set annotation group name based on the imported filename
-        QString baseName = QFileInfo(fullFileName).fileName();
-        m_graphSearch->setAnnotationGroupName(baseName);
+        // Set annotation group name
+        m_graphSearch->setAnnotationGroupName("Graph Search Hits");
 
         m_graphSearch->queries().findQueryPaths();
         m_graphSearch->queries().searchOccurred();
         updateTables();
         emit changed();
 
+        QString baseName = QFileInfo(fullFileName).fileName();
         ui->importStatusLabel->setText(
             QString("Imported %1 hits from %2")
                 .arg(hitsImported)
                 .arg(baseName));
-
-        g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
     } else {
         QMessageBox::warning(this, "Import Failed",
             "No valid hits found in the file. Please check the format.");
         ui->importStatusLabel->setText("Import failed");
     }
+
+    return hitsImported;
 }
 
 // Helper function to find a node by name, trying with/without +/- suffix
@@ -413,8 +436,18 @@ int GraphSearchDialog::importBlastTabular(const QString &fullFileName) {
         // Get or create query
         Query *query = queries.getQueryFromName(queryName);
         if (query == nullptr) {
-            query = new Query(queryName, QByteArray());
+            // Create a dummy sequence with estimated length
+            // We'll update it later if we find a longer hit
+            query = new Query(queryName, QString());
             queries.addQuery(query);
+        }
+
+        // Update query length if this hit extends beyond current estimate
+        int estimatedLen = query->getLength();
+        if (queryEnd > estimatedLen) {
+            // Resize the dummy sequence to accommodate the longest hit
+            QString newSeq(queryEnd, 'N');
+            query->setSequence(newSeq);
         }
 
         // Find the node in the graph

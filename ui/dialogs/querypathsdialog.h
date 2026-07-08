@@ -72,9 +72,11 @@ public:
 private:
     Ui::QueryPathsDialog *ui;
     QueryPathsModel *m_queryPathsModel;
+    search::Query *m_query;
 private slots:
     void hidden();
     void tableSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
+    void showContextMenu(const QPoint &pos);
 
 signals:
     void selectionChanged();

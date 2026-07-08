@@ -19,27 +19,57 @@
      <property name="title">
       <string>BED File</string>
      </property>
-     <layout class="QHBoxLayout" name="fileLayout">
+     <layout class="QVBoxLayout" name="fileLayout">
       <item>
-       <widget class="QPushButton" name="loadFileButton">
-        <property name="text">
-         <string>Load BED File...</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="fileButtonsLayout">
+        <item>
+         <widget class="QPushButton" name="loadFileButton">
+          <property name="text">
+           <string>Load BED File...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="fileStatusLabel">
+          <property name="text">
+           <string>No file loaded</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="fileSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </item>
       <item>
-       <widget class="QLabel" name="fileStatusLabel">
-        <property name="text">
-         <string>No file loaded</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="fileSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-       </spacer>
+       <layout class="QHBoxLayout" name="sourceFileLayout">
+        <item>
+         <widget class="QLabel" name="sourceFileLabel">
+          <property name="text">
+           <string>Source File:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="sourceFileComboBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <item>
+           <property name="text">
+            <string>all</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -50,6 +80,31 @@
       <string>Click on the Color column to change color for each entry. Uncheck Show to hide entries.</string>
      </property>
     </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="selectionButtonLayout">
+     <item>
+      <widget class="QPushButton" name="selectAllButton">
+       <property name="text">
+        <string>Select All</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="invertSelectionButton">
+       <property name="text">
+        <string>Invert Selection</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="selectionButtonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </spacer>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QTableView" name="bedTableView">

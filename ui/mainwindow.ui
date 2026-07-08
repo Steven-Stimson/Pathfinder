@@ -1480,35 +1480,6 @@ then colour which other nodes in the graph are likely to be contiguous
               <property name="rightMargin">
                <number>0</number>
               </property>
-              <item row="1" column="0">
-               <widget class="InfoTextWidget" name="blastQueryInfoText" native="true">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>16</width>
-                  <height>16</height>
-                 </size>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After a graph search is completed, you can select a query here for use with the 'Around query hits' graph scope.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_4">
-                <property name="text">
-                 <string>Query:</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
               <item row="0" column="0">
                <widget class="InfoTextWidget" name="blastSearchInfoText" native="true">
                 <property name="sizePolicy">
@@ -1526,27 +1497,6 @@ then colour which other nodes in the graph are likely to be contiguous
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click this button to open a dialog where a search for one or more queries can be carried out on the graph's nodes using different tools (BLAST, minimap2, etc).&lt;br/&gt;&lt;br/&gt;After a  search is complete, it will be possible to use the 'Around query hits' graph scope and node annotations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <widget class="QComboBox" name="blastQueryComboBox">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::StrongFocus</enum>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>none</string>
-                 </property>
-                </item>
                </widget>
               </item>
               <item row="0" column="1" colspan="2">
@@ -2732,8 +2682,6 @@ then colour which other nodes in the graph are likely to be contiguous
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionSettings"/>
-    <addaction name="separator"/>
     <addaction name="menuPathfinder"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -2744,6 +2692,8 @@ then colour which other nodes in the graph are likely to be contiguous
     <addaction name="actionSelection_panel"/>
     <addaction name="separator"/>
     <addaction name="actionZoom_to_fit_graph"/>
+    <addaction name="separator"/>
+    <addaction name="actionSettings"/>
    </widget>
    <widget class="QMenu" name="menuSelection">
     <property name="title">
@@ -2942,10 +2892,10 @@ then colour which other nodes in the graph are likely to be contiguous
      <normaloff>:/icons/BLAST.png</normaloff>:/icons/BLAST.png</iconset>
    </property>
    <property name="text">
-    <string>Select nodes with BLAST hits</string>
+    <string>Select nodes with search hits</string>
    </property>
    <property name="toolTip">
-    <string>Select nodes with BLAST hits</string>
+    <string>Select nodes with search hits (BLAST, PAF, HMMER)</string>
    </property>
   </action>
   <action name="actionSelect_all">
@@ -3327,7 +3277,6 @@ then colour which other nodes in the graph are likely to be contiguous
   <tabstop>fontButton</tabstop>
   <tabstop>textOutlineCheckBox</tabstop>
   <tabstop>blastSearchButton</tabstop>
-  <tabstop>blastQueryComboBox</tabstop>
   <tabstop>selectionScrollArea</tabstop>
   <tabstop>selectionSearchNodesLineEdit</tabstop>
   <tabstop>selectionSearchNodesExactMatchRadioButton</tabstop>

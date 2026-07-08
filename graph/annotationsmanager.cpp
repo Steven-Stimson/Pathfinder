@@ -83,7 +83,7 @@ const AnnotationGroup *AnnotationsManager::findGroupById(AnnotationGroupId id) c
     return res->get();
 }
 
-void AnnotationsManager::updateGroupFromHits(const QString &name, const std::vector<search::Query *> &queries) {
+void AnnotationsManager::updateGroupFromHits(const QString &name, const std::vector<search::Query *> &queries, const QString &sourceFileFilter) {
     // Preserve annotation settings, if they existed
     AnnotationSetting groupSettings;
     if (const auto *group = findGroupByName(name))
@@ -97,6 +97,10 @@ void AnnotationsManager::updateGroupFromHits(const QString &name, const std::vec
     auto &group = createAnnotationGroup(name);
     for (auto *query: queries) {
         for (const auto &hit: query->getHits()) {
+            // Filter by source file if specified
+            if (!sourceFileFilter.isEmpty() && hit->getSourceFile() != sourceFileFilter)
+                continue;
+
             auto &annotation = group.annotationMap[hit->m_node].emplace_back(
                     std::make_unique<Annotation>(
                             hit->m_nodeStart,

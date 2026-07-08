@@ -4,17 +4,20 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-BedWidget::BedWidget(QWidget *parent) : QWidget(parent) {
-    static const QString label = "Load BED file";
+BedWidget::BedWidget(QWidget *parent) : QWidget(parent), m_bedDialog(nullptr) {
+    static const QString label = "Load/view BED file";
     auto *button = new QPushButton(label, this);
 
     auto *layout = new QVBoxLayout();
     layout->addWidget(button);
 
     connect(button, &QPushButton::clicked, [this]() {
-        auto *dialog = new BedDialog(this);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->show();
+        if (!m_bedDialog) {
+            m_bedDialog = new BedDialog(this);
+        }
+        m_bedDialog->show();
+        m_bedDialog->raise();
+        m_bedDialog->activateWindow();
     });
 
     setLayout(layout);

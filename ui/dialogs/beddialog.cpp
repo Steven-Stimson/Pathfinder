@@ -152,6 +152,33 @@ BedDialog::BedDialog(QWidget *parent)
     connect(ui->loadFileButton, SIGNAL(clicked()), this, SLOT(loadFileButtonClicked()));
     connect(ui->closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 
+    // Source file filter
+    connect(ui->sourceFileComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &BedDialog::sourceFileChanged);
+
+    // Update annotations when Show checkbox is toggled
+    connect(m_tableModel, &BedTableModel::dataChanged,
+            [this](const QModelIndex &, const QModelIndex &) {
+                applyAnnotations();
+            });
+
+    // Select All and Invert Selection buttons
+    connect(ui->selectAllButton, &QPushButton::clicked, [this]() {
+        for (auto &entry : m_entries) {
+            entry.visible = true;
+        }
+        m_tableModel->update();
+        applyAnnotations();
+    });
+
+    connect(ui->invertSelectionButton, &QPushButton::clicked, [this]() {
+        for (auto &entry : m_entries) {
+            entry.visible = !entry.visible;
+        }
+        m_tableModel->update();
+        applyAnnotations();
+    });
+
     // Handle color column click
     connect(ui->bedTableView,
             &QTableView::clicked,
@@ -200,13 +227,15 @@ void BedDialog::loadFileButtonClicked() {
 void BedDialog::loadBedFile(const QString &fullFileName) {
     try {
         auto bedLines = bed::load(fullFileName.toStdString());
+        QString baseName = QFileInfo(fullFileName).fileName();
 
-        m_entries.clear();
+        // Add entries from this file (append, don't clear)
         for (const auto &bedLine : bedLines) {
             BedEntry entry;
             entry.line = bedLine;
             entry.color = bedLine.itemRgb.toQColor();
             entry.visible = true;
+            entry.sourceFile = baseName;
 
             // Resolve node name
             auto nodeName = g_assemblyGraph->getNodeNameFromString(bedLine.chrom.c_str());
@@ -215,11 +244,17 @@ void BedDialog::loadBedFile(const QString &fullFileName) {
             m_entries.push_back(entry);
         }
 
-        m_groupName = QFileInfo(fullFileName).fileName();
+        // Track loaded file
+        if (!m_loadedFiles.contains(baseName)) {
+            m_loadedFiles.append(baseName);
+            updateSourceFileFilter();
+        }
+
         m_tableModel->update();
 
+        // Update status label with total entries
         ui->fileStatusLabel->setText(
-            QString("%1 (%2 entries)").arg(QFileInfo(fullFileName).fileName()).arg(m_entries.size()));
+            QString("%1 entries from %2 files").arg(m_entries.size()).arg(m_loadedFiles.size()));
 
         g_memory->rememberedPath = QFileInfo(fullFileName).absolutePath();
 
@@ -233,12 +268,39 @@ void BedDialog::loadBedFile(const QString &fullFileName) {
     }
 }
 
-void BedDialog::applyAnnotations() {
-    if (m_groupName.isEmpty())
-        return;
+void BedDialog::updateSourceFileFilter() {
+    ui->sourceFileComboBox->blockSignals(true);
+    ui->sourceFileComboBox->clear();
+    ui->sourceFileComboBox->addItem("all");
+    for (const QString &file : m_loadedFiles) {
+        ui->sourceFileComboBox->addItem(file);
+    }
+    ui->sourceFileComboBox->blockSignals(false);
+}
 
-    g_annotationsManager->removeGroupByName(m_groupName);
-    auto &annotationGroup = g_annotationsManager->createAnnotationGroup(m_groupName);
+void BedDialog::sourceFileChanged(int index) {
+    if (index == 0) {
+        // "all" selected - show all entries
+        for (auto &entry : m_entries) {
+            entry.visible = true;
+        }
+    } else if (index > 0 && index <= m_loadedFiles.size()) {
+        // Specific file selected
+        QString selectedFile = m_loadedFiles.at(index - 1);
+        for (auto &entry : m_entries) {
+            entry.visible = (entry.sourceFile == selectedFile);
+        }
+    }
+    m_tableModel->update();
+    applyAnnotations();
+}
+
+void BedDialog::applyAnnotations() {
+    // Use a fixed group name for all BED annotations
+    static const QString groupName = "BED Annotations";
+
+    g_annotationsManager->removeGroupByName(groupName);
+    auto &annotationGroup = g_annotationsManager->createAnnotationGroup(groupName);
 
     for (const auto &entry : m_entries) {
         if (!entry.visible)

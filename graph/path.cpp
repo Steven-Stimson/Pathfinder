@@ -462,23 +462,18 @@ QByteArray Path::getAAFasta(unsigned shift, QString name) const {
 QString Path::getString(bool spaces) const {
     QString output;
     for (int i = 0; i < m_nodes.size(); ++i) {
-        if (i == 0 && !m_startLocation.isAtStartOfNode()) {
-            output += "(" + QString::number(m_startLocation.getPosition()) + ")";
-            if (spaces)
-                output += " ";
+        output += m_nodes[i]->getName();
+        // Use GFA P-line format: + for forward, - for reverse
+        if (m_nodes[i]->isPositiveNode()) {
+            output += "+";
+        } else {
+            output += "-";
         }
 
-        output += m_nodes[i]->getName();
         if (i < m_nodes.size() - 1) {
             output += ",";
             if (spaces)
                 output += " ";
-        }
-
-        if (i == m_nodes.size() - 1 && !m_endLocation.isAtEndOfNode()) {
-            if (spaces)
-                output += " ";
-            output += "(" + QString::number(m_endLocation.getPosition()) + ")";
         }
     }
     return output;

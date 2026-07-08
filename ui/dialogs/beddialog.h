@@ -33,6 +33,7 @@ struct BedEntry {
     QColor color;
     bool visible = true;
     QString nodeName;  // Resolved node name for display
+    QString sourceFile;  // Source file this entry came from
 };
 
 class BedTableModel : public QAbstractTableModel {
@@ -64,12 +65,14 @@ private:
     Ui::BedDialog *ui;
     std::vector<BedEntry> m_entries;
     BedTableModel *m_tableModel;
-    QString m_groupName;
+    QStringList m_loadedFiles;  // Track loaded files
 
     void loadBedFile(const QString &fullFileName);
     void applyAnnotations();
     void updateAnnotations();
+    void updateSourceFileFilter();
 
 private slots:
     void loadFileButtonClicked();
+    void sourceFileChanged(int index);
 };

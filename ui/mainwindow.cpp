@@ -428,7 +428,6 @@ MainWindow::MainWindow(QString fileToLoadOnStartup, bool drawGraphAfterLoad) :
     connect(ui->selectionSearchNodesLineEdit, SIGNAL(returnPressed()), this, SLOT(selectUserSpecifiedNodes()));
     connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(openAboutDialog()));
     connect(ui->blastSearchButton, SIGNAL(clicked()), this, SLOT(openBlastSearchDialog()));
-    connect(ui->blastQueryComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(blastQueryChanged()));
     connect(ui->actionControls_panel, SIGNAL(toggled(bool)), this, SLOT(showHidePanels()));
     connect(ui->actionSelection_panel, SIGNAL(toggled(bool)), this, SLOT(showHidePanels()));
     connect(ui->contiguityButton, SIGNAL(clicked()), this, SLOT(determineContiguityFromSelectedNode()));
@@ -527,9 +526,6 @@ MainWindow::~MainWindow() {
 
 
 void MainWindow::cleanUp() {
-    ui->blastQueryComboBox->clear();
-    ui->blastQueryComboBox->addItem("none");
-
     if (m_blastSearchDialog) {
         m_blastSearchDialog->search()->cleanUp();
         delete m_blastSearchDialog;
@@ -1432,7 +1428,7 @@ void MainWindow::drawGraph() {
                          ui->startingNodesLineEdit->text(),
                          ui->minDepthSpinBox->value(), ui->maxDepthSpinBox->value(),
                          m_blastSearchDialog ? &m_blastSearchDialog->search()->queries() : nullptr,
-                         ui->blastQueryComboBox->currentText(),
+                         QString(),  // No query selection needed
                          g_settings->graphScope == GraphScope::AROUND_PATHS ?
                          ui->pathSelectionLineEdit->displayText() : ui->walkSelectionLineEdit->displayText(),
                          ui->nodeDistanceSpinBox->value());
@@ -2474,80 +2470,27 @@ void MainWindow::blastChanged() {
     if (!m_blastSearchDialog)
         return;
 
-    const auto *search = m_blastSearchDialog->search();
-    QString blastQueryText = ui->blastQueryComboBox->currentText();
-    const auto *queryBefore = search->queries().getQueryFromName(blastQueryText);
-
-    // If we didn't find a currently selected query, but it isn't "none" or "all",
-    // then maybe the user changed the name of the currently selected query, and
-    // that's why we didn't find it.  In that case, try to find it using the
-    // index.
-    if (queryBefore == nullptr && blastQueryText != "none" && blastQueryText != "all") {
-        int blastQueryIndex = ui->blastQueryComboBox->currentIndex();
-        if (ui->blastQueryComboBox->count() > 1)
-            --blastQueryIndex;
-        if (blastQueryIndex < search->getQueryCount())
-            queryBefore = search->query(blastQueryIndex);
-    }
-
-    //Rebuild the query combo box, in case the user changed the queries or
-    //their names.
-    setupBlastQueryComboBox();
-
-    //Look to see if the query selected before is still present.  If so,
-    //set the combo box to have that query selected.  If not (or if no
-    //query was previously selected), leave the combo box a index 0.
-    if (queryBefore && search->isQueryPresent(queryBefore)) {
-        int indexOfQuery = ui->blastQueryComboBox->findText(queryBefore->getName());
-        if (indexOfQuery != -1)
-            ui->blastQueryComboBox->setCurrentIndex(indexOfQuery);
-    }
-
+    // No longer need to track query selection - just update annotations
     blastQueryChanged();
 }
 
 void MainWindow::setupBlastQueryComboBox() {
-    ui->blastQueryComboBox->clear();
-    if (!m_blastSearchDialog)
-        return;
-
-    const auto *search = m_blastSearchDialog->search();
-    QStringList comboBoxItems;
-    for (const auto &query : search->queries()) {
-        if (query->hasHits())
-            comboBoxItems.push_back(query->getName());
-    }
-
-    if (comboBoxItems.size() > 1)
-        comboBoxItems.push_front("all");
-
-    if (!comboBoxItems.empty()) {
-        ui->blastQueryComboBox->addItems(comboBoxItems);
-        ui->blastQueryComboBox->setEnabled(true);
-    } else {
-        ui->blastQueryComboBox->addItem("none");
-        ui->blastQueryComboBox->setEnabled(false);
-    }
+    // No longer needed - removed Query combobox
+    // Annotations now directly use selected (checked) queries
 }
 
 void MainWindow::blastQueryChanged() {
     if (!m_blastSearchDialog)
         return;
 
-    QString queryName = ui->blastQueryComboBox->currentText();
     const auto *search = m_blastSearchDialog->search();
 
+    // Always use selected (checked) queries
     std::vector<search::Query *> shownQueries;
-    // If "all" is selected, then we'll display each of the BLAST queries
-    if (queryName == "all") {
-        for (auto *query : search->queries()) {
-            if (query->isShown())
-                shownQueries.push_back(query);
-        }
-    }  else if (auto *query = search->getQueryFromName(queryName))
-        // If only one query is selected, then just display that one.
-        if (query->isShown())
+    for (auto *query : search->queries()) {
+        if (query->isShown() && query->hasHits())
             shownQueries.push_back(query);
+    }
 
     g_annotationsManager->updateGroupFromHits(search->annotationGroupName(), shownQueries);
     g_graphicsView->viewport()->update();
@@ -2641,62 +2584,74 @@ void MainWindow::bringSelectedNodesToFront() {
 }
 
 
-// TODO: rewrite to selectNodesWithAnnotation
+// Select nodes with search hits, linked to selected queries
 void MainWindow::selectNodesWithBlastHits() {
-    const auto *blastHitsGroup = g_annotationsManager->findGroupByName(g_settings->blastAnnotationGroupName);
-    if (!blastHitsGroup) {
-        QMessageBox::information(this, "No BLAST hits",
-                                       "To select nodes with BLAST hits, you must first conduct a BLAST search.");
+    if (!m_blastSearchDialog) {
+        QMessageBox::information(this, "No search hits",
+                                       "To select nodes with search hits, you must first conduct a search "
+                                       "or import search results (.blast, .paf, .domtbl).");
+        return;
+    }
+
+    const auto *search = m_blastSearchDialog->search();
+
+    // Use selected (checked) queries
+    std::vector<search::Query *> targetQueries;
+    for (auto *query : search->queries()) {
+        if (query->isShown() && query->hasHits())
+            targetQueries.push_back(query);
+    }
+
+    if (targetQueries.empty()) {
+        QMessageBox::information(this, "No search hits",
+                                       "No search hits found. Please check queries in Graph Search.");
+        return;
+    }
+
+    // Find the annotation group
+    const AnnotationGroup *targetGroup = g_annotationsManager->findGroupByName(search->annotationGroupName());
+    if (!targetGroup) {
+        QMessageBox::information(this, "No search hits",
+                                       "No annotations found. Please check your search results.");
         return;
     }
 
     m_scene->blockSignals(true);
     m_scene->clearSelection();
 
-    bool atLeastOneNodeHasBlastHits = false;
     bool atLeastOneNodeSelected = false;
 
-    for (auto &[node, annotations] : blastHitsGroup->annotationMap) {
+    // Collect nodes from target queries
+    std::set<DeBruijnNode *> nodesToSelect;
+    for (auto *query : targetQueries) {
+        for (const auto &hit : query->getHits()) {
+            nodesToSelect.insert(hit->m_node);
+            if (!g_settings->doubleMode) {
+                nodesToSelect.insert(hit->m_node->getReverseComplement());
+            }
+        }
+    }
 
-        bool nodeHasBlastHits;
-
-        //If we're in double mode, only select a node if it has a BLAST hit itself.
-        nodeHasBlastHits = !annotations.empty();
-        if (!g_settings->doubleMode)
-            //In single mode, select a node if it or its reverse complement has a BLAST hit.
-            nodeHasBlastHits = nodeHasBlastHits || !blastHitsGroup->getAnnotations(node->getReverseComplement()).empty();
-
-        if (nodeHasBlastHits)
-            atLeastOneNodeHasBlastHits = true;
-
-        GraphicsItemNode * graphicsItemNode = node->getGraphicsItemNode();
-
-        if (graphicsItemNode == nullptr)
-            continue;
-
-        if (nodeHasBlastHits)
-        {
+    // Select the nodes
+    for (auto *node : nodesToSelect) {
+        GraphicsItemNode *graphicsItemNode = node->getGraphicsItemNode();
+        if (graphicsItemNode) {
             graphicsItemNode->setSelected(true);
             atLeastOneNodeSelected = true;
         }
     }
+
     m_scene->blockSignals(false);
     g_graphicsView->viewport()->update();
     selectionChanged();
 
-    if (!atLeastOneNodeHasBlastHits)
-    {
-        QMessageBox::information(this, "No BLAST hits",
-                                       "To select nodes with BLAST hits, you must first conduct a BLAST search.");
-        return;
-    }
-
-    if (!atLeastOneNodeSelected)
-        QMessageBox::information(this, "No BLAST hits in visible nodes",
-                                       "No nodes with BLAST hits are currently visible, so there is nothing to select. "
-                                       "Adjust the graph scope to make the nodes with BLAST hits visible.");
-    else
+    if (!atLeastOneNodeSelected) {
+        QMessageBox::information(this, "No search hits in visible nodes",
+                                       "No nodes with search hits are currently visible, so there is nothing to select. "
+                                       "Adjust the graph scope to make the nodes with search hits visible.");
+    } else {
         zoomToSelection();
+    }
 }
 
 
@@ -3235,10 +3190,6 @@ void MainWindow::cleanUpAllBlast() {
         auto *search = m_blastSearchDialog->search();
         search->cleanUp();
         g_annotationsManager->removeGroupByName(search->annotationGroupName());
-    }
-    ui->blastQueryComboBox->clear();
-
-    if (m_blastSearchDialog) {
         delete m_blastSearchDialog;
         m_blastSearchDialog = nullptr;
     }

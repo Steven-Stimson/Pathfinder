@@ -49,6 +49,10 @@ namespace search {
         int m_nodeEnd;
         SciNot m_eValue;
         double m_bitScore;
+        QString m_sourceFile;  // Source file this hit came from
+
+        void setSourceFile(const QString &sourceFile) { m_sourceFile = sourceFile; }
+        QString getSourceFile() const { return m_sourceFile; }
 
         double getQueryCoverageFraction() const;
         static double getQueryCoverageFraction(Query *query,
