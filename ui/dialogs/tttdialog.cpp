@@ -58,6 +58,8 @@ TTTDialog::TTTDialog(QWidget *parent)
     }
 
     connect(ui->browseGafButton, &QPushButton::clicked, this, &TTTDialog::browseGaf);
+    connect(ui->removeAlignmentButton, &QPushButton::clicked, this, &TTTDialog::removeSelectedAlignment);
+    connect(ui->clearAlignmentButton, &QPushButton::clicked, this, &TTTDialog::clearAlignment);
     connect(ui->browseCoverageButton, &QPushButton::clicked, this, &TTTDialog::browseCoverage);
     connect(ui->browseBoundaryButton, &QPushButton::clicked, this, &TTTDialog::browseBoundaryNodesFile);
     connect(ui->selectBoundaryButton, &QPushButton::clicked, this, &TTTDialog::startBoundarySelection);
@@ -82,7 +84,11 @@ TTTDialog::~TTTDialog()
 
 void TTTDialog::loadSettings()
 {
-    ui->gafPathEdit->setText(g_settings->tttGafPath);
+    // Load alignment files list
+    if (!g_settings->tttGafPath.isEmpty()) {
+        m_alignmentFiles = g_settings->tttGafPath.split(";", Qt::SkipEmptyParts);
+        ui->alignmentListWidget->addItems(m_alignmentFiles);
+    }
     ui->coveragePathEdit->setText(g_settings->tttCoveragePath);
     ui->qualityThresholdSpinBox->setValue(g_settings->tttQualityThreshold > 0 ? g_settings->tttQualityThreshold : 20);
     ui->mipTimeLimitSpinBox->setValue(g_settings->tttMipTimeLimit > 0 ? g_settings->tttMipTimeLimit : 7200);
@@ -97,7 +103,8 @@ void TTTDialog::loadSettings()
 
 void TTTDialog::saveSettings()
 {
-    g_settings->tttGafPath = ui->gafPathEdit->text();
+    // Save alignment files list
+    g_settings->tttGafPath = m_alignmentFiles.join(";");
     g_settings->tttCoveragePath = ui->coveragePathEdit->text();
     g_settings->tttQualityThreshold = ui->qualityThresholdSpinBox->value();
     g_settings->tttMipTimeLimit = ui->mipTimeLimitSpinBox->value();
@@ -112,10 +119,32 @@ void TTTDialog::saveSettings()
 
 void TTTDialog::browseGaf()
 {
-    QString path = QFileDialog::getOpenFileName(this, "Select Alignment File",
-                                                 QString(), "All files (*)");
-    if (!path.isEmpty())
-        ui->gafPathEdit->setText(path);
+    QStringList paths = QFileDialog::getOpenFileNames(this, "Select Alignment Files",
+                                                       QString(),
+                                                       "Alignment files (*.gaf *.gaf.gz *.pairs *.pairs.gz);;All files (*)");
+    if (!paths.isEmpty()) {
+        for (const auto &path : paths) {
+            if (!m_alignmentFiles.contains(path)) {
+                m_alignmentFiles.append(path);
+                ui->alignmentListWidget->addItem(path);
+            }
+        }
+    }
+}
+
+void TTTDialog::removeSelectedAlignment()
+{
+    QList<QListWidgetItem*> selected = ui->alignmentListWidget->selectedItems();
+    for (auto *item : selected) {
+        m_alignmentFiles.removeOne(item->text());
+        delete item;
+    }
+}
+
+void TTTDialog::clearAlignment()
+{
+    m_alignmentFiles.clear();
+    ui->alignmentListWidget->clear();
 }
 
 void TTTDialog::browseCoverage()
@@ -279,8 +308,14 @@ void TTTDialog::runTTT()
     if (!basename.isEmpty())
         args << "--basename" << basename;
 
-    if (!ui->gafPathEdit->text().isEmpty() && QFile::exists(ui->gafPathEdit->text()))
-        args << "--alignment" << ui->gafPathEdit->text();
+    // Add multiple alignment files
+    if (!m_alignmentFiles.isEmpty()) {
+        args << "--alignment";
+        for (const auto &alignFile : m_alignmentFiles) {
+            if (QFile::exists(alignFile))
+                args << alignFile;
+        }
+    }
 
     if (!ui->coveragePathEdit->text().isEmpty() && QFile::exists(ui->coveragePathEdit->text()))
         args << "--coverage" << ui->coveragePathEdit->text();
@@ -438,7 +473,7 @@ void TTTDialog::appendLog(const QString &text)
 void TTTDialog::setRunningState(bool running)
 {
     ui->runButton->setEnabled(!running);
-    ui->gafPathEdit->setEnabled(!running);
+    ui->alignmentListWidget->setEnabled(!running);
     ui->coveragePathEdit->setEnabled(!running);
     ui->selectBoundaryButton->setEnabled(!running);
     ui->clearBoundaryButton->setEnabled(!running);
@@ -449,6 +484,8 @@ void TTTDialog::setRunningState(bool running)
     ui->initialPathsSpinBox->setEnabled(!running);
     ui->maxIterSpinBox->setEnabled(!running);
     ui->browseGafButton->setEnabled(!running);
+    ui->removeAlignmentButton->setEnabled(!running);
+    ui->clearAlignmentButton->setEnabled(!running);
     ui->browseCoverageButton->setEnabled(!running);
     ui->browseOutputButton->setEnabled(!running);
     ui->cancelButton->setText(running ? "Kill TTT" : "Cancel");

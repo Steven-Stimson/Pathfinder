@@ -21,6 +21,8 @@ public:
 
 private slots:
     void browseGaf();
+    void removeSelectedAlignment();
+    void clearAlignment();
     void browseCoverage();
     void browseBoundaryNodesFile();
     void startBoundarySelection();
@@ -41,6 +43,7 @@ private:
     QString m_boundaryTsvPath;
     QString m_inputGfaPath;
     QString m_tttBinaryPath;
+    QStringList m_alignmentFiles;
 
     void setRunningState(bool running);
     void appendLog(const QString &text);
