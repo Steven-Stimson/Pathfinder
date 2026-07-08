@@ -69,6 +69,16 @@
           </item>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="removeSourceButton">
+          <property name="text">
+           <string>Remove Source</string>
+          </property>
+          <property name="toolTip">
+           <string>Remove selected source file and its entries</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
@@ -98,6 +108,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="deleteSelectedButton">
+       <property name="text">
+        <string>Delete Selected</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="selectionButtonSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -122,18 +139,18 @@
    <item>
     <layout class="QHBoxLayout" name="buttonLayout">
      <item>
+      <widget class="QPushButton" name="addRowButton">
+       <property name="text">
+        <string>Add Row</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="buttonSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
       </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="closeButton">
-       <property name="text">
-        <string>Close</string>
-       </property>
-      </widget>
      </item>
     </layout>
    </item>

@@ -44,6 +44,7 @@ public:
     QString renameQuery(Query * newQuery, QString newName);
     void clearAllQueries();
     void clearSomeQueries(const std::vector<Query *> &queriesToRemove);
+    void removeQuery(size_t index);
     void searchOccurred();
     void clearSearchResults();
 

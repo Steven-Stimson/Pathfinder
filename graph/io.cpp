@@ -105,10 +105,38 @@ namespace {
                 std::vector<DeBruijnNode*> pathNodes;
                 pathNodes.reserve(path->segments.size());
 
-                for (const auto &node: path->segments)
-                    pathNodes.push_back(graph.m_deBruijnGraphNodes.at(node));
-                graph.m_deBruijnGraphPaths.emplace(path->name,
-                                                   Path::makeFromOrderedNodes(pathNodes, false));
+                for (const auto &node: path->segments) {
+                    std::string nodeName;
+
+                    // Support both GFA1 (>seg/<seg) and GFA2 (seg+/seg-) formats
+                    if (!node.empty()) {
+                        char first = node.front();
+                        char last = node.back();
+
+                        if (first == '>' || first == '<') {
+                            // GFA1 format: >seg or <seg
+                            // Convert to GFA2 format: seg+ or seg-
+                            nodeName = std::string(node.begin() + 1, node.end());
+                            nodeName.push_back(first == '>' ? '+' : '-');
+                        } else if (last == '+' || last == '-') {
+                            // GFA2 format: seg+ or seg- (already correct)
+                            nodeName = std::string(node.begin(), node.end());
+                        } else {
+                            // No orientation indicator, assume +
+                            nodeName = std::string(node.begin(), node.end());
+                            nodeName.push_back('+');
+                        }
+                    }
+
+                    auto it = graph.m_deBruijnGraphNodes.find(nodeName);
+                    if (it == graph.m_deBruijnGraphNodes.end())
+                        continue;  // Skip invalid nodes
+                    pathNodes.push_back(it.value());
+                }
+                if (!pathNodes.empty()) {
+                    graph.m_deBruijnGraphPaths.emplace(path->name,
+                                                       Path::makeFromOrderedNodes(pathNodes, false));
+                }
             }
         }
 

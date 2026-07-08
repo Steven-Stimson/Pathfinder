@@ -102,6 +102,13 @@ void Queries::clearSomeQueries(const std::vector<Query *> &queriesToRemove) {
         delete query;
 }
 
+void Queries::removeQuery(size_t index) {
+    if (index < m_queries.size()) {
+        delete m_queries[index];
+        m_queries.erase(m_queries.begin() + index);
+    }
+}
+
 void Queries::searchOccurred() {
     for (auto *query : m_queries)
         query->setAsSearchedFor();

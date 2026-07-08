@@ -87,6 +87,7 @@ namespace search {
         void setSourceFile(const QString &sourceFile) { m_sourceFile = sourceFile; }
         void setSequence(const QString &sequence) { m_sequence = sequence; }
         QString getSourceFile() const { return m_sourceFile; }
+        void removeHitsBySourceFile(const QString &sourceFile);
     private:
         QString m_name;
         QString m_sequence;

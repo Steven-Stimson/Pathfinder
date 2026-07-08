@@ -19,30 +19,70 @@
      <property name="title">
       <string>Import Search Results</string>
      </property>
-     <layout class="QHBoxLayout" name="importLayout">
+     <layout class="QVBoxLayout" name="importVBoxLayout">
       <item>
-       <widget class="QPushButton" name="importResultsButton">
-        <property name="text">
-         <string>Import Results File...</string>
-        </property>
-        <property name="toolTip">
-         <string>Import pre-computed search results. Supported formats: PAF (Minimap2), BLAST tabular, HMMER domtbl</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="importLayout">
+        <item>
+         <widget class="QPushButton" name="importResultsButton">
+          <property name="text">
+           <string>Import Results File...</string>
+          </property>
+          <property name="toolTip">
+           <string>Import pre-computed search results. Supported formats: PAF (Minimap2), BLAST tabular, HMMER domtbl</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="importStatusLabel">
+          <property name="text">
+           <string>No results imported</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="importSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </item>
       <item>
-       <widget class="QLabel" name="importStatusLabel">
-        <property name="text">
-         <string>No results imported</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="importSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-       </spacer>
+       <layout class="QHBoxLayout" name="sourceFileLayout">
+        <item>
+         <widget class="QLabel" name="sourceFileLabel">
+          <property name="text">
+           <string>Source File:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="sourceFileComboBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <item>
+           <property name="text">
+            <string>all</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="removeSourceFileButton">
+          <property name="text">
+           <string>Remove Source</string>
+          </property>
+          <property name="toolTip">
+           <string>Remove selected source file and its entries</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -84,6 +124,13 @@
           <widget class="QPushButton" name="invertSelectionQueriesButton">
            <property name="text">
             <string>Invert Selection</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="deleteSelectedQueriesButton">
+           <property name="text">
+            <string>Delete Selected</string>
            </property>
           </widget>
          </item>

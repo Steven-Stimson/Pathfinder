@@ -22,6 +22,7 @@
 #include "graph/annotationsmanager.h"
 #include "graph/assemblygraph.h"
 #include "graph/debruijnnode.h"
+#include "ui/bandagegraphicsview.h"
 
 #include "program/globals.h"
 #include "program/memory.h"
@@ -46,7 +47,13 @@ enum class BedColumns : unsigned {
     Name = 5,
     Score = 6,
     Strand = 7,
-    TotalColumns = Strand + 1
+    ThickStart = 8,
+    ThickEnd = 9,
+    ItemRgb = 10,
+    BlockCount = 11,
+    BlockSizes = 12,
+    BlockStarts = 13,
+    TotalColumns = BlockStarts + 1
 };
 
 // BedTableModel implementation
@@ -68,7 +75,7 @@ QVariant BedTableModel::data(const QModelIndex &index, int role) const {
     const auto &entry = m_entries.get()[index.row()];
     auto column = BedColumns(index.column());
 
-    if (role == Qt::DisplayRole) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (column) {
             case BedColumns::Chrom:
                 return QString::fromStdString(entry.line.chrom);
@@ -86,6 +93,28 @@ QVariant BedTableModel::data(const QModelIndex &index, int role) const {
                     case bed::Strand::REVERSE_COMPLEMENT: return "-";
                     default: return ".";
                 }
+            case BedColumns::ThickStart:
+                return entry.line.thickStart >= 0 ? QVariant(qlonglong(entry.line.thickStart)) : QVariant(".");
+            case BedColumns::ThickEnd:
+                return entry.line.thickEnd >= 0 ? QVariant(qlonglong(entry.line.thickEnd)) : QVariant(".");
+            case BedColumns::ItemRgb:
+                return QString("%1,%2,%3").arg(entry.line.itemRgb.r).arg(entry.line.itemRgb.g).arg(entry.line.itemRgb.b);
+            case BedColumns::BlockCount:
+                return QVariant(qlonglong(entry.line.blocks.size()));
+            case BedColumns::BlockSizes:
+            {
+                QStringList sizes;
+                for (const auto &block : entry.line.blocks)
+                    sizes << QString::number(block.end - block.start);
+                return sizes.join(",");
+            }
+            case BedColumns::BlockStarts:
+            {
+                QStringList starts;
+                for (const auto &block : entry.line.blocks)
+                    starts << QString::number(block.start - entry.line.chromStart);
+                return starts.join(",");
+            }
             default:
                 return QVariant();
         }
@@ -113,6 +142,12 @@ QVariant BedTableModel::headerData(int section, Qt::Orientation orientation, int
         case BedColumns::Name: return "Name";
         case BedColumns::Score: return "Score";
         case BedColumns::Strand: return "Strand";
+        case BedColumns::ThickStart: return "ThickStart";
+        case BedColumns::ThickEnd: return "ThickEnd";
+        case BedColumns::ItemRgb: return "RGB";
+        case BedColumns::BlockCount: return "Blocks";
+        case BedColumns::BlockSizes: return "BlockSizes";
+        case BedColumns::BlockStarts: return "BlockStarts";
         default: return QVariant();
     }
 }
@@ -121,6 +156,11 @@ Qt::ItemFlags BedTableModel::flags(const QModelIndex &index) const {
     auto flags = QAbstractTableModel::flags(index);
     if (BedColumns(index.column()) == BedColumns::Show)
         flags |= Qt::ItemIsUserCheckable;
+    // Enable editing for all data columns except Color and computed columns
+    auto column = BedColumns(index.column());
+    if (column != BedColumns::Color && column != BedColumns::Show &&
+        column != BedColumns::BlockCount)  // BlockCount is computed from blocks
+        flags |= Qt::ItemIsEditable;
     return flags;
 }
 
@@ -132,6 +172,150 @@ bool BedTableModel::setData(const QModelIndex &index, const QVariant &value, int
         m_entries.get()[index.row()].visible = value.toBool();
         emit dataChanged(index, index);
         return true;
+    }
+
+    if (role == Qt::EditRole) {
+        // If value is empty, don't change anything
+        if (value.toString().trimmed().isEmpty())
+            return false;
+
+        auto &entry = m_entries.get()[index.row()];
+        auto column = BedColumns(index.column());
+
+        if (column == BedColumns::Chrom) {
+            entry.line.chrom = value.toString().toStdString();
+            entry.nodeName.clear();  // Clear nodeName so it will be re-resolved
+            emit dataChanged(index, index);
+            return true;
+        } else if (column == BedColumns::Start) {
+            bool ok;
+            int val = value.toInt(&ok);
+            if (ok && val >= 0) {
+                entry.line.chromStart = val;
+                emit dataChanged(index, index);
+                return true;
+            }
+            return false;
+        } else if (column == BedColumns::End) {
+            bool ok;
+            int val = value.toInt(&ok);
+            if (ok && val >= 0) {
+                entry.line.chromEnd = val;
+                emit dataChanged(index, index);
+                return true;
+            }
+            return false;
+        } else if (column == BedColumns::Name) {
+            entry.line.name = value.toString().toStdString();
+            emit dataChanged(index, index);
+            return true;
+        } else if (column == BedColumns::Score) {
+            bool ok;
+            int val = value.toInt(&ok);
+            if (ok) {
+                entry.line.score = val;
+                emit dataChanged(index, index);
+                return true;
+            }
+            return false;
+        } else if (column == BedColumns::Strand) {
+            QString str = value.toString().trimmed();
+            if (str == "+")
+                entry.line.strand = bed::Strand::NORMAL;
+            else if (str == "-")
+                entry.line.strand = bed::Strand::REVERSE_COMPLEMENT;
+            else
+                entry.line.strand = bed::Strand::UNKNOWN;
+            emit dataChanged(index, index);
+            return true;
+        } else if (column == BedColumns::ThickStart) {
+            if (value.toString() == ".") {
+                entry.line.thickStart = -1;
+            } else {
+                bool ok;
+                int val = value.toInt(&ok);
+                if (ok && val >= 0) {
+                    entry.line.thickStart = val;
+                } else {
+                    return false;
+                }
+            }
+            emit dataChanged(index, index);
+            return true;
+        } else if (column == BedColumns::ThickEnd) {
+            if (value.toString() == ".") {
+                entry.line.thickEnd = -1;
+            } else {
+                bool ok;
+                int val = value.toInt(&ok);
+                if (ok && val >= 0) {
+                    entry.line.thickEnd = val;
+                } else {
+                    return false;
+                }
+            }
+            emit dataChanged(index, index);
+            return true;
+        } else if (column == BedColumns::ItemRgb) {
+            QStringList rgb = value.toString().split(",");
+            if (rgb.size() == 3) {
+                bool ok1, ok2, ok3;
+                int r = rgb[0].toInt(&ok1);
+                int g = rgb[1].toInt(&ok2);
+                int b = rgb[2].toInt(&ok3);
+                if (ok1 && ok2 && ok3 && r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
+                    entry.line.itemRgb.r = r;
+                    entry.line.itemRgb.g = g;
+                    entry.line.itemRgb.b = b;
+                    entry.color = entry.line.itemRgb.toQColor();
+                    emit dataChanged(index, index);
+                    return true;
+                }
+            }
+            return false;
+        } else if (column == BedColumns::BlockSizes) {
+            // Parse comma-separated block sizes
+            QStringList sizes = value.toString().split(",");
+            if (sizes.size() == static_cast<int>(entry.line.blocks.size())) {
+                bool allOk = true;
+                for (int i = 0; i < sizes.size(); ++i) {
+                    bool ok;
+                    int size = sizes[i].toInt(&ok);
+                    if (!ok || size <= 0) {
+                        allOk = false;
+                        break;
+                    }
+                    entry.line.blocks[i].end = entry.line.blocks[i].start + size;
+                }
+                if (allOk) {
+                    emit dataChanged(index, index);
+                    return true;
+                }
+            }
+            return false;
+        } else if (column == BedColumns::BlockStarts) {
+            // Parse comma-separated block starts (relative to chromStart)
+            QStringList starts = value.toString().split(",");
+            if (starts.size() == static_cast<int>(entry.line.blocks.size())) {
+                bool allOk = true;
+                for (int i = 0; i < starts.size(); ++i) {
+                    bool ok;
+                    int start = starts[i].toInt(&ok);
+                    if (!ok || start < 0) {
+                        allOk = false;
+                        break;
+                    }
+                    int blockSize = entry.line.blocks[i].end - entry.line.blocks[i].start;
+                    entry.line.blocks[i].start = entry.line.chromStart + start;
+                    entry.line.blocks[i].end = entry.line.blocks[i].start + blockSize;
+                }
+                if (allOk) {
+                    emit dataChanged(index, index);
+                    return true;
+                }
+            }
+            return false;
+        }
     }
     return false;
 }
@@ -148,13 +332,16 @@ BedDialog::BedDialog(QWidget *parent)
     proxyModel->setSourceModel(m_tableModel);
     ui->bedTableView->setModel(proxyModel);
     ui->bedTableView->setSortingEnabled(true);
+    ui->bedTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
 
     connect(ui->loadFileButton, SIGNAL(clicked()), this, SLOT(loadFileButtonClicked()));
-    connect(ui->closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+    connect(ui->addRowButton, SIGNAL(clicked()), this, SLOT(addNewRow()));
 
     // Source file filter
     connect(ui->sourceFileComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &BedDialog::sourceFileChanged);
+    connect(ui->removeSourceButton, &QPushButton::clicked,
+            this, &BedDialog::removeSourceFile);
 
     // Update annotations when Show checkbox is toggled
     connect(m_tableModel, &BedTableModel::dataChanged,
@@ -178,6 +365,10 @@ BedDialog::BedDialog(QWidget *parent)
         m_tableModel->update();
         applyAnnotations();
     });
+
+    // Delete selected entries
+    connect(ui->deleteSelectedButton, &QPushButton::clicked,
+            this, &BedDialog::deleteSelectedEntries);
 
     // Handle color column click
     connect(ui->bedTableView,
@@ -212,16 +403,20 @@ BedDialog::~BedDialog() {
 }
 
 void BedDialog::loadFileButtonClicked() {
-    QString fullFileName = QFileDialog::getOpenFileName(
+    QStringList fileNames = QFileDialog::getOpenFileNames(
         this,
-        "Load BED file",
+        "Load BED file(s)",
         g_memory->rememberedPath,
         "BED files (*.bed);;All files (*)");
 
-    if (fullFileName.isEmpty())
+    if (fileNames.isEmpty())
         return;
 
-    loadBedFile(fullFileName);
+    for (const QString &fullFileName : fileNames) {
+        loadBedFile(fullFileName);
+    }
+
+    g_memory->rememberedPath = QFileInfo(fileNames.first()).absolutePath();
 }
 
 void BedDialog::loadBedFile(const QString &fullFileName) {
@@ -302,9 +497,14 @@ void BedDialog::applyAnnotations() {
     g_annotationsManager->removeGroupByName(groupName);
     auto &annotationGroup = g_annotationsManager->createAnnotationGroup(groupName);
 
-    for (const auto &entry : m_entries) {
+    for (auto &entry : m_entries) {
         if (!entry.visible)
             continue;
+
+        // Resolve node name from chrom if not already resolved
+        if (entry.nodeName.isEmpty()) {
+            entry.nodeName = g_assemblyGraph->getNodeNameFromString(entry.line.chrom.c_str());
+        }
 
         auto it = g_assemblyGraph->m_deBruijnGraphNodes.find(entry.nodeName.toStdString());
         if (it == g_assemblyGraph->m_deBruijnGraphNodes.end())
@@ -322,8 +522,126 @@ void BedDialog::applyAnnotations() {
                                                             entry.line.thickStart, entry.line.thickEnd));
         annotation->addView(std::make_unique<BedBlockView>(BED_BLOCK_WIDTH, entry.color, entry.line.blocks));
     }
+
+    // Force graphics view to update
+    if (g_graphicsView) {
+        g_graphicsView->viewport()->update();
+    }
 }
 
 void BedDialog::updateAnnotations() {
     applyAnnotations();
+}
+
+void BedDialog::deleteSelectedEntries() {
+    auto *selectionModel = ui->bedTableView->selectionModel();
+    if (!selectionModel->hasSelection()) {
+        QMessageBox::information(this, "No Selection",
+                                       "Please select entries to delete.");
+        return;
+    }
+
+    auto *proxyModel = qobject_cast<QSortFilterProxyModel *>(ui->bedTableView->model());
+    auto selectedRows = selectionModel->selectedRows();
+
+    // Collect source indices to remove
+    std::vector<size_t> indicesToRemove;
+    for (const auto &proxyIndex : selectedRows) {
+        auto sourceIndex = proxyModel->mapToSource(proxyIndex);
+        indicesToRemove.push_back(sourceIndex.row());
+    }
+
+    // Sort in reverse order to remove from end to start
+    std::sort(indicesToRemove.rbegin(), indicesToRemove.rend());
+
+    // Remove entries
+    for (size_t index : indicesToRemove) {
+        if (index < m_entries.size()) {
+            m_entries.erase(m_entries.begin() + index);
+        }
+    }
+
+    m_tableModel->update();
+    applyAnnotations();
+
+    ui->fileStatusLabel->setText(
+        QString("%1 entries remaining").arg(m_entries.size()));
+}
+
+void BedDialog::removeSourceFile() {
+    int index = ui->sourceFileComboBox->currentIndex();
+
+    // If "all" is selected, clear everything
+    if (index == 0) {
+        m_entries.clear();
+        m_loadedFiles.clear();
+        updateSourceFileFilter();
+        m_tableModel->update();
+        applyAnnotations();
+        ui->fileStatusLabel->setText("All entries cleared");
+        return;
+    }
+
+    if (index < 0 || index > m_loadedFiles.size()) {
+        QMessageBox::information(this, "No Source Selected",
+                                       "Please select a source file to remove.");
+        return;
+    }
+
+    QString fileToRemove = m_loadedFiles.at(index - 1);
+
+    // Remove all entries from this source file
+    m_entries.erase(
+        std::remove_if(m_entries.begin(), m_entries.end(),
+            [&fileToRemove](const BedEntry &entry) {
+                return entry.sourceFile == fileToRemove;
+            }),
+        m_entries.end());
+
+    // Remove from loaded files list
+    m_loadedFiles.removeAt(index - 1);
+    updateSourceFileFilter();
+
+    m_tableModel->update();
+    applyAnnotations();
+
+    ui->fileStatusLabel->setText(
+        QString("Removed %1. %2 entries remaining.")
+            .arg(fileToRemove)
+            .arg(m_entries.size()));
+}
+
+void BedDialog::addNewRow() {
+    BedEntry entry;
+    entry.line.chrom = "node1";
+    entry.line.chromStart = 0;
+    entry.line.chromEnd = 1000;
+    entry.line.name = "new_entry";
+    entry.line.score = 0;
+    entry.line.strand = bed::Strand::NORMAL;
+    entry.line.thickStart = 0;
+    entry.line.thickEnd = 1000;
+    entry.line.itemRgb.r = rand() % 256;
+    entry.line.itemRgb.g = rand() % 256;
+    entry.line.itemRgb.b = rand() % 256;
+    entry.color = entry.line.itemRgb.toQColor();
+    entry.visible = true;
+    entry.sourceFile = "manual";
+
+    // Resolve node name from chrom
+    entry.nodeName = g_assemblyGraph->getNodeNameFromString(entry.line.chrom.c_str());
+
+    m_entries.push_back(entry);
+
+    // Track the manual source file if not already tracked
+    if (!m_loadedFiles.contains("manual")) {
+        m_loadedFiles.append("manual");
+        updateSourceFileFilter();
+    }
+
+    m_tableModel->update();
+    applyAnnotations();
+
+    ui->fileStatusLabel->setText(
+        QString("%1 entries").arg(m_entries.size()));
 }

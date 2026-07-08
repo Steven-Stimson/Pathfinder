@@ -155,6 +155,14 @@ def parse_arguments():
     parser.add_argument("--output-gfa", action="store_true", default=False, help="Output traversal paths as GFA files.")
     parser.add_argument("--output-mode", type=str, default="all", choices=["all", "merged", "per-path", "concatenated"],
                         help="GFA output mode: all, merged, per-path, or concatenated (default: all).")
+
+    # GFA format options (mutually exclusive)
+    gfa_format_group = parser.add_mutually_exclusive_group()
+    gfa_format_group.add_argument("--gfa1", action="store_true", default=True,
+                                  help="Output P-lines in GFA1 format with >/< prefixes (default)")
+    gfa_format_group.add_argument("--gfa2", action="store_true", default=False,
+                                  help="Output P-lines in GFA2 format with +/- suffixes")
+
     args = parser.parse_args()
     if not args.graph:
         sys.stderr.write("--graph is required\n")
@@ -422,9 +430,15 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
                     if edge_tuple not in all_edges:
                         all_edges.append(edge_tuple)
 
-                # Build path segment for P-line (use + or - as suffix per GFA spec)
-                orient_suffix = '+' if orientation == '+' else '-'
-                path_segments.append(f"{original_name}{orient_suffix}")
+                # Build path segment for P-line based on format
+                if args.gfa2:
+                    # GFA2 format: seg+ or seg-
+                    orient_suffix = '+' if orientation == '+' else '-'
+                    path_segments.append(f"{original_name}{orient_suffix}")
+                else:
+                    # GFA1 format: >seg or <seg (default)
+                    orient_prefix = '>' if orientation == '+' else '<'
+                    path_segments.append(f"{orient_prefix}{original_name}")
                 prev_seg_name = original_name
                 prev_edge = edge.original_node
                 prev_orientation = orientation

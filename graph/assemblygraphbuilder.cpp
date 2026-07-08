@@ -613,13 +613,26 @@ namespace io {
             pathNodes.reserve(record.segments.size());
 
             for (const auto &node: record.segments) {
-                // GFA P-line format: segment name followed by + or - suffix
-                // e.g., "utg001260l+" or "utg001260l-"
-                char orientation = node.back();
-                std::string nodeName(node.begin(), node.end() - 1);
-                if (orientation != '+' && orientation != '-') {
-                    // No orientation suffix, use as-is (backward compat)
-                    nodeName = std::string(node.begin(), node.end());
+                std::string nodeName;
+
+                // Support both GFA1 (>seg/<seg) and GFA2 (seg+/seg-) formats
+                if (!node.empty()) {
+                    char first = node.front();
+                    char last = node.back();
+
+                    if (first == '>' || first == '<') {
+                        // GFA1 format: >seg or <seg
+                        // Convert to GFA2 format: seg+ or seg-
+                        nodeName = std::string(node.begin() + 1, node.end());
+                        nodeName.push_back(first == '>' ? '+' : '-');
+                    } else if (last == '+' || last == '-') {
+                        // GFA2 format: seg+ or seg- (already correct)
+                        nodeName = std::string(node.begin(), node.end());
+                    } else {
+                        // No orientation indicator, assume +
+                        nodeName = std::string(node.begin(), node.end());
+                        nodeName.push_back('+');
+                    }
                 }
 
                 auto nodeIt = graph.m_deBruijnGraphNodes.find(nodeName);

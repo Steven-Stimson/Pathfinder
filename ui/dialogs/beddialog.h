@@ -75,4 +75,7 @@ private:
 private slots:
     void loadFileButtonClicked();
     void sourceFileChanged(int index);
+    void deleteSelectedEntries();
+    void removeSourceFile();
+    void addNewRow();
 };

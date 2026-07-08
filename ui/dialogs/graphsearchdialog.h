@@ -115,9 +115,14 @@ private:
     QueriesListModel *m_queriesListModel;
     HitsListModel *m_hitsListModel;
 
+    // Track imported source files
+    QStringList m_importedFiles;
+    QString m_currentSourceFilter;
+
     void clearHits();
     void setFilterText();
     void updateTables();
+    void updateSourceFileFilter();
 
     // Import results from file
     int importResultsFromFile(const QString &fullFileName);
@@ -130,7 +135,10 @@ private slots:
     void importResultsButtonClicked();
     void clearAllQueries();
     void clearSelectedQueries();
+    void deleteSelectedQueries();
     void updateTablesAndEmit();
+    void sourceFileChanged(int index);
+    void removeSourceFile();
 
     void openFiltersDialog();
 

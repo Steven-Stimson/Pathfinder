@@ -78,6 +78,15 @@ void Query::clearSearchResults() {
     m_hits.clear();
 }
 
+void Query::removeHitsBySourceFile(const QString &sourceFile) {
+    m_hits.erase(
+        std::remove_if(m_hits.begin(), m_hits.end(),
+            [&sourceFile](const std::unique_ptr<Hit> &hit) {
+                return hit->getSourceFile() == sourceFile;
+            }),
+        m_hits.end());
+}
+
 // This function tries to find the paths through the graph which cover the query.
 void Query::findQueryPaths() {
     m_paths.clear();

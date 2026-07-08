@@ -92,6 +92,7 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
     proxyQModel->setSourceModel(m_queriesListModel);
     ui->blastQueriesTable->setModel(proxyQModel);
     ui->blastQueriesTable->setSortingEnabled(true);
+    ui->blastQueriesTable->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
 
     auto *queryPathsDelegate = new PathButtonDelegate(ui->blastQueriesTable);
     ui->blastQueriesTable->setItemDelegateForColumn(int(QueriesHitColumns::Paths),
@@ -119,6 +120,12 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
     connect(ui->filtersButton, SIGNAL(clicked()), this, SLOT(openFiltersDialog()));
     connect(ui->closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 
+    // Source file filter
+    connect(ui->sourceFileComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &GraphSearchDialog::sourceFileChanged);
+    connect(ui->removeSourceFileButton, &QPushButton::clicked,
+            this, &GraphSearchDialog::removeSourceFile);
+
     // Select All and Invert Selection buttons for queries
     connect(ui->selectAllQueriesButton, &QPushButton::clicked, [this]() {
         auto &queries = m_graphSearch->queries();
@@ -141,6 +148,10 @@ GraphSearchDialog::GraphSearchDialog(QWidget *parent, const QString& autoQuery)
         updateTables();
         emit changed();
     });
+
+    // Delete selected queries
+    connect(ui->deleteSelectedQueriesButton, &QPushButton::clicked,
+            this, &GraphSearchDialog::deleteSelectedQueries);
 
     // Selection change handler (for future use)
     connect(ui->blastQueriesTable->selectionModel(),
@@ -296,6 +307,13 @@ int GraphSearchDialog::importResultsFromFile(const QString &fullFileName) {
     }
 
     if (hitsImported > 0) {
+        // Track imported file
+        QString baseName = QFileInfo(fullFileName).fileName();
+        if (!m_importedFiles.contains(baseName)) {
+            m_importedFiles.append(baseName);
+            updateSourceFileFilter();
+        }
+
         // Set annotation group name
         m_graphSearch->setAnnotationGroupName("Graph Search Hits");
 
@@ -304,7 +322,6 @@ int GraphSearchDialog::importResultsFromFile(const QString &fullFileName) {
         updateTables();
         emit changed();
 
-        QString baseName = QFileInfo(fullFileName).fileName();
         ui->importStatusLabel->setText(
             QString("Imported %1 hits from %2")
                 .arg(hitsImported)
@@ -390,6 +407,7 @@ int GraphSearchDialog::importPAF(const QString &fullFileName) {
                                 -1, -1,
                                 queryStart, queryEnd,
                                 targetStart, targetEnd, 0, 0);
+            hit->setSourceFile(QFileInfo(fullFileName).fileName());
             query->addHit(hit);
             hitsImported++;
         }
@@ -459,6 +477,7 @@ int GraphSearchDialog::importBlastTabular(const QString &fullFileName) {
                                 queryStart, queryEnd,
                                 subjectStart, subjectEnd,
                                 SciNot(evalue), bitScore);
+            hit->setSourceFile(QFileInfo(fullFileName).fileName());
             query->addHit(hit);
             hitsImported++;
         }
@@ -518,6 +537,7 @@ int GraphSearchDialog::importHmmerDomtbl(const QString &fullFileName) {
                                 1, queryLen, // Full query coverage for HMM hits
                                 aliFrom, aliTo,
                                 SciNot(evalue), bitScore);
+            hit->setSourceFile(QFileInfo(fullFileName).fileName());
             query->addHit(hit);
             hitsImported++;
         }
@@ -559,6 +579,154 @@ void GraphSearchDialog::openFiltersDialog() {
         updateTables();
         emit changed();
     }
+}
+
+void GraphSearchDialog::updateSourceFileFilter() {
+    ui->sourceFileComboBox->blockSignals(true);
+    ui->sourceFileComboBox->clear();
+    ui->sourceFileComboBox->addItem("all");
+    for (const QString &file : m_importedFiles) {
+        ui->sourceFileComboBox->addItem(file);
+    }
+    ui->sourceFileComboBox->blockSignals(false);
+}
+
+void GraphSearchDialog::sourceFileChanged(int index) {
+    if (index == 0) {
+        // "all" selected - show all queries
+        m_currentSourceFilter.clear();
+        auto &queries = m_graphSearch->queries();
+        for (size_t i = 0; i < queries.getQueryCount(); ++i) {
+            if (auto *query = queries[i]) {
+                query->setShown(true);
+            }
+        }
+    } else if (index > 0 && index <= m_importedFiles.size()) {
+        // Specific file selected - show only queries with hits from this file
+        m_currentSourceFilter = m_importedFiles.at(index - 1);
+        auto &queries = m_graphSearch->queries();
+        for (size_t i = 0; i < queries.getQueryCount(); ++i) {
+            if (auto *query = queries[i]) {
+                bool hasHitsFromSource = false;
+                for (const auto &hit : query->getHits()) {
+                    if (hit->getSourceFile() == m_currentSourceFilter) {
+                        hasHitsFromSource = true;
+                        break;
+                    }
+                }
+                query->setShown(hasHitsFromSource);
+            }
+        }
+    }
+
+    m_queriesListModel->update();
+    m_hitsListModel->update(m_graphSearch->queries());
+    emit changed();
+}
+
+void GraphSearchDialog::removeSourceFile() {
+    int index = ui->sourceFileComboBox->currentIndex();
+
+    // If "all" is selected, clear everything
+    if (index == 0) {
+        m_graphSearch->queries().clearAllQueries();
+        m_importedFiles.clear();
+        m_currentSourceFilter.clear();
+        updateSourceFileFilter();
+        m_queriesListModel->update();
+        m_hitsListModel->clear();
+        m_hitsListModel->update(m_graphSearch->queries());
+        emit changed();
+        ui->importStatusLabel->setText("All results cleared");
+        return;
+    }
+
+    if (index < 0 || index > m_importedFiles.size()) {
+        QMessageBox::information(this, "No Source Selected",
+                                       "Please select a source file to remove.");
+        return;
+    }
+
+    QString fileToRemove = m_importedFiles.at(index - 1);
+
+    // Remove all queries that only have hits from this source file
+    auto &queries = m_graphSearch->queries();
+    std::vector<size_t> queriesToRemove;
+
+    for (size_t i = 0; i < queries.getQueryCount(); ++i) {
+        if (auto *query = queries[i]) {
+            // Check if all hits are from the file to remove
+            bool allHitsFromThisFile = true;
+            bool hasHitsFromOtherFiles = false;
+
+            for (const auto &hit : query->getHits()) {
+                if (hit->getSourceFile() == fileToRemove) {
+                    // This hit is from the file to remove
+                } else {
+                    hasHitsFromOtherFiles = true;
+                    allHitsFromThisFile = false;
+                }
+            }
+
+            if (allHitsFromThisFile && !hasHitsFromOtherFiles) {
+                queriesToRemove.push_back(i);
+            } else if (hasHitsFromOtherFiles) {
+                // Remove only hits from this file
+                query->removeHitsBySourceFile(fileToRemove);
+            }
+        }
+    }
+
+    // Remove queries (in reverse order to maintain indices)
+    for (auto it = queriesToRemove.rbegin(); it != queriesToRemove.rend(); ++it) {
+        queries.removeQuery(*it);
+    }
+
+    // Remove from imported files list
+    m_importedFiles.removeAt(index - 1);
+    m_currentSourceFilter.clear();
+    updateSourceFileFilter();
+
+    // Update tables
+    m_queriesListModel->update();
+    m_hitsListModel->update(m_graphSearch->queries());
+    emit changed();
+
+    ui->importStatusLabel->setText(
+        QString("Removed %1. %2 queries remaining.")
+            .arg(fileToRemove)
+            .arg(queries.getQueryCount()));
+}
+
+void GraphSearchDialog::deleteSelectedQueries() {
+    auto *selectionModel = ui->blastQueriesTable->selectionModel();
+    if (!selectionModel->hasSelection()) {
+        QMessageBox::information(this, "No Selection",
+                                       "Please select queries to delete.");
+        return;
+    }
+
+    auto *proxyModel = qobject_cast<QSortFilterProxyModel *>(ui->blastQueriesTable->model());
+    auto selectedRows = selectionModel->selectedRows();
+
+    // Collect source indices to remove
+    std::vector<size_t> indicesToRemove;
+    for (const auto &proxyIndex : selectedRows) {
+        auto sourceIndex = proxyModel->mapToSource(proxyIndex);
+        indicesToRemove.push_back(sourceIndex.row());
+    }
+
+    // Sort in reverse order to remove from end to start
+    std::sort(indicesToRemove.rbegin(), indicesToRemove.rend());
+
+    // Remove queries
+    auto &queries = m_graphSearch->queries();
+    for (size_t index : indicesToRemove) {
+        queries.removeQuery(index);
+    }
+
+    updateTables();
+    emit changed();
 }
 
 // PathButtonDelegate implementation
@@ -626,7 +794,7 @@ QVariant QueriesListModel::data(const QModelIndex &index, int role) const {
 
     auto column = QueriesHitColumns(index.column());
 
-    if (role == Qt::DisplayRole) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (column) {
             case QueriesHitColumns::QueryName:
                 return query->getName();
@@ -673,6 +841,9 @@ Qt::ItemFlags QueriesListModel::flags(const QModelIndex &index) const {
     auto flags = QAbstractTableModel::flags(index);
     if (QueriesHitColumns(index.column()) == QueriesHitColumns::Show)
         flags |= Qt::ItemIsUserCheckable;
+    // Enable editing for Query name column
+    if (QueriesHitColumns(index.column()) == QueriesHitColumns::QueryName)
+        flags |= Qt::ItemIsEditable;
     return flags;
 }
 
@@ -683,6 +854,18 @@ bool QueriesListModel::setData(const QModelIndex &index, const QVariant &value, 
     if (role == Qt::CheckStateRole && QueriesHitColumns(index.column()) == QueriesHitColumns::Show) {
         if (auto *query = m_queries.get().query(index.row())) {
             query->setShown(value.toBool());
+            emit dataChanged(index, index);
+            return true;
+        }
+    }
+
+    if (role == Qt::EditRole && QueriesHitColumns(index.column()) == QueriesHitColumns::QueryName) {
+        // If value is empty, don't change anything
+        if (value.toString().trimmed().isEmpty())
+            return false;
+
+        if (auto *query = m_queries.get().query(index.row())) {
+            query->setName(value.toString());
             emit dataChanged(index, index);
             return true;
         }
