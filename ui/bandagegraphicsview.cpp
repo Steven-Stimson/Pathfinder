@@ -94,6 +94,15 @@ void PathfinderGraphicsView::mousePressEvent(QMouseEvent * event)
         return;
     }
 
+    // Shift+Left button: additive rubber band selection
+    if (event->button() == Qt::LeftButton && event->modifiers() == Qt::ShiftModifier) {
+        m_shiftHeld = true;
+        m_previousSelection = scene()->selectedItems();
+        // Let QGraphicsView handle the rubber band selection
+        QGraphicsView::mousePressEvent(event);
+        return;
+    }
+
     m_previousPos = event->pos();
     QGraphicsView::mousePressEvent(event);
 }
@@ -113,6 +122,22 @@ void PathfinderGraphicsView::mouseReleaseEvent(QMouseEvent * event)
         g_rotationMode = false;
         setCursor(Qt::ArrowCursor);
         emit rotationFinished();
+        return;
+    }
+
+    // Shift+Left button release: merge previous selection with new selection
+    if (m_shiftHeld && event->button() == Qt::LeftButton) {
+        QGraphicsView::mouseReleaseEvent(event);
+
+        // Restore previously selected items
+        for (QGraphicsItem *item : m_previousSelection) {
+            item->setSelected(true);
+        }
+
+        m_shiftHeld = false;
+        m_previousSelection.clear();
+        setDragMode(QGraphicsView::RubberBandDrag);
+        g_settings->nodeDragging = NEARBY_PIECES;
         return;
     }
 

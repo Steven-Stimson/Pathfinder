@@ -59,6 +59,8 @@ protected:
 
 private:
     double m_rotation;
+    bool m_shiftHeld = false;
+    QList<QGraphicsItem *> m_previousSelection;
 
     static double distance(double x1, double y1, double x2, double y2);
     static double angleBetweenTwoLines(QPointF line1Start, QPointF line1End, QPointF line2Start, QPointF line2End);
