@@ -399,17 +399,17 @@ void TTTDialog::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
 
         // Load the appropriate GFA based on output mode
         int mode = ui->outputModeComboBox->currentIndex();
-        if (mode == 0 || mode == 3) {
-            // All or Concatenated: prefer concatenated
-            QString catGfa = m_outputDir + "/" + basename + "_path.concatenated.gfa";
-            if (QFile::exists(catGfa)) {
-                m_outputGfaPath = catGfa;
-            }
-        } else if (mode == 1) {
-            // Merged
+        if (mode == 0 || mode == 1) {
+            // All or Merged: prefer merged
             QString mergedGfa = m_outputDir + "/" + basename + "_path.merged.gfa";
-            if (QFile::exists(mergedGfa))
+            if (QFile::exists(mergedGfa)) {
                 m_outputGfaPath = mergedGfa;
+            }
+        } else if (mode == 3) {
+            // Concatenated
+            QString catGfa = m_outputDir + "/" + basename + "_path.concatenated.gfa";
+            if (QFile::exists(catGfa))
+                m_outputGfaPath = catGfa;
         } else {
             // Per-path: load path0
             QString path0Gfa = m_outputDir + "/" + basename + "_path0.gfa";

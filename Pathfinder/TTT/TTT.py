@@ -447,8 +447,8 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
             path_name = f"traversal_{path_idx}" if len(paths) > 1 else "traversal"
             path_lines.append(f"P\t{path_name}\t{','.join(path_segments)}\t*")
 
-        # Write concatenated GFA
-        gfa_path = os.path.join(outdir, f"{basename}_path.concatenated.gfa")
+        # Write merged GFA
+        gfa_path = os.path.join(outdir, f"{basename}_path.merged.gfa")
         with open(gfa_path, 'w') as f:
             f.write("H\tVN:Z:1.0\n")
             # Write all unique S-lines with full tags
@@ -470,7 +470,7 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
             # Write P-lines for each path
             for p_line in path_lines:
                 f.write(f"{p_line}\n")
-        logging.info(f"Wrote concatenated GFA to {gfa_path}: {len(all_nodes)} nodes, {len(all_edges)} edges, {len(path_lines)} paths")
+        logging.info(f"Wrote merged GFA to {gfa_path}: {len(all_nodes)} nodes, {len(all_edges)} edges, {len(path_lines)} paths")
 
     # Helper function to write S-line with proper tags
     def write_sline(f, seg_name, original_name, node_id, is_shared, path_idx):
