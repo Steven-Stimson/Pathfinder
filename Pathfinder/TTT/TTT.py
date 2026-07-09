@@ -323,8 +323,8 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
     """Write traversal paths as GFA files for Pathfinder integration.
 
     Output modes:
-      - all / concatenated: writes {basename}_path.concatenated.gfa (single path concatenated)
-      - merged: writes {basename}_path.merged.gfa (merged segmented path)
+      - all / merged: writes {basename}_path.merged.gfa (single GFA with P-lines, shared nodes NOT duplicated)
+      - concatenated: writes {basename}_path.concatenated.gfa (one segment per original edge with links, shared nodes duplicated)
       - per-path: writes {basename}_path0.gfa, {basename}_path1.gfa, ... (one per segment)
 
     Node naming convention:
@@ -383,8 +383,8 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
             return f"{original_name}_TTT{path_idx}"
         return original_name
 
-    # In concatenated mode: single GFA with all paths, shared nodes NOT duplicated, P-lines for each path
-    if mode in ("all", "concatenated"):
+    # In merged mode: single GFA with all paths, shared nodes NOT duplicated, P-lines for each path
+    if mode in ("all", "merged"):
         # Collect all unique nodes and edges across all paths
         all_nodes = {}  # node_id -> (name, seq)
         all_edges = []  # list of (from_name, from_orient, to_name, to_orient, overlap)
@@ -457,7 +457,7 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
                 orig_name = tangle.node_id_mapper.node_id_to_unoriented_name(node_id)
                 if orig_name in original_slines:
                     parts = original_slines[orig_name]
-                    # Copy parts, keeping original name (shared nodes not duplicated in concatenated mode)
+                    # Copy parts, keeping original name (shared nodes not duplicated in merged mode)
                     new_parts = [parts[0], name] + parts[2:]
                     f.write('\t'.join(new_parts) + '\n')
                 else:
@@ -522,9 +522,9 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
             seq = tangle.original_graph.nodes[node_id].get('sequence', '*')
             f.write(f"S\t{seg_name}\t{seq}\n")
 
-    # In merged mode: one segment per original edge with links
-    if mode in ("all", "merged"):
-        gfa_path = os.path.join(outdir, f"{basename}_path.merged.gfa")
+    # In concatenated mode: one segment per original edge with links, shared nodes duplicated
+    if mode in ("all", "concatenated"):
+        gfa_path = os.path.join(outdir, f"{basename}_path.concatenated.gfa")
         with open(gfa_path, 'w') as f:
             f.write("H\tVN:Z:1.0\n")
             for path_idx, path in enumerate(paths):
@@ -545,7 +545,7 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
                         f.write(f"L\t{prev_seg}\t+\t{seg_name}\t+\t{overlap_str}\n")
                     prev_seg = seg_name
                     prev_edge = edge.original_node
-        logging.info(f"Wrote merged GFA to {gfa_path}")
+        logging.info(f"Wrote concatenated GFA to {gfa_path}")
 
     # In per-path mode: one file per segment
     if mode in ("all", "per-path"):
