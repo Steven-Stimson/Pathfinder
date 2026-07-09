@@ -153,6 +153,7 @@ public:
     void deleteEdges(const std::vector<DeBruijnEdge *> &edges);
     void duplicateNodePair(DeBruijnNode * node, PathfinderGraphicsScene * scene);
     bool mergeNodes(QList<DeBruijnNode *> nodes, PathfinderGraphicsScene * scene);
+    void updatePathsForMerge(const std::vector<DeBruijnNode *> &oldNodes, DeBruijnNode *newNode);
 
     int mergeAllPossible(PathfinderGraphicsScene * scene = 0,
                          MyProgressDialog * progressDialog = 0);

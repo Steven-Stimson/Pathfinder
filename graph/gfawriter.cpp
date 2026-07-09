@@ -158,6 +158,9 @@ namespace gfa {
             gfaPathLine += qPrintable(nodes.back()->getName());
         }
 
+        // Add overlaps field (GFA format requires 4 fields)
+        gfaPathLine += "\t*";
+
         return gfaPathLine;
     }
 

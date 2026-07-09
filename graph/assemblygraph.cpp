@@ -836,6 +836,21 @@ void AssemblyGraph::deleteNodes(const std::vector<DeBruijnNode *> &nodes)
         nodesToDelete.insert(node->getReverseComplement());
     }
 
+    // Remove paths that contain any of the nodes being deleted
+    std::vector<std::string> pathsToRemove;
+    for (auto it = m_deBruijnGraphPaths.begin(); it != m_deBruijnGraphPaths.end(); ++it) {
+        const auto &pathNodes = it.value().nodes();
+        for (auto *pathNode : pathNodes) {
+            if (nodesToDelete.contains(pathNode)) {
+                pathsToRemove.push_back(std::string(it.key()));
+                break;
+            }
+        }
+    }
+    for (const auto &pathName : pathsToRemove) {
+        m_deBruijnGraphPaths.erase(pathName);
+    }
+
     //Build a list of edges to delete.
     std::vector<DeBruijnEdge *> edgesToDelete;
     for (auto *node : nodesToDelete) {
@@ -1078,12 +1093,91 @@ bool AssemblyGraph::mergeNodes(QList<DeBruijnNode *> nodes, PathfinderGraphicsSc
     mergeGraphicsNodes(orderedList, revCompOrderedList, newPosNode,
                        *this, scene);
 
+    // Update paths before deleting nodes
+    updatePathsForMerge(orderedList, newPosNode);
+
     deleteNodes(orderedList);
 
     recalculateAllNodeWidths(g_settings->averageNodeWidth,
                              g_settings->depthPower, g_settings->depthEffectOnWidth);
 
     return true;
+}
+
+void AssemblyGraph::updatePathsForMerge(const std::vector<DeBruijnNode *> &oldNodes, DeBruijnNode *newNode) {
+    if (oldNodes.empty())
+        return;
+
+    // Build a set of old nodes for quick lookup
+    QSet<DeBruijnNode *> oldNodeSet;
+    for (auto *node : oldNodes) {
+        oldNodeSet.insert(node);
+        oldNodeSet.insert(node->getReverseComplement());
+    }
+
+    // Get the reverse complement of the new node
+    DeBruijnNode *newNodeRC = newNode->getReverseComplement();
+
+    // Process each path
+    std::vector<std::string> pathsToRemove;
+    std::vector<std::pair<std::string, Path>> pathsToAdd;
+
+    for (auto it = m_deBruijnGraphPaths.begin(); it != m_deBruijnGraphPaths.end(); ++it) {
+        const auto &pathNodes = it.value().nodes();
+
+        // Check if this path contains any of the old nodes
+        bool containsOldNode = false;
+        for (auto *pathNode : pathNodes) {
+            if (oldNodeSet.contains(pathNode)) {
+                containsOldNode = true;
+                break;
+            }
+        }
+
+        if (!containsOldNode)
+            continue;
+
+        // Build new path by replacing consecutive old nodes with new node
+        std::vector<DeBruijnNode *> newNodes;
+        bool inMergeRegion = false;
+
+        for (size_t i = 0; i < pathNodes.size(); ++i) {
+            DeBruijnNode *node = pathNodes[i];
+
+            if (oldNodeSet.contains(node)) {
+                if (!inMergeRegion) {
+                    // Start of merge region - add new node
+                    // Determine orientation based on first old node
+                    if (node->isPositiveNode())
+                        newNodes.push_back(newNode);
+                    else
+                        newNodes.push_back(newNodeRC);
+                    inMergeRegion = true;
+                }
+                // Skip consecutive old nodes
+            } else {
+                newNodes.push_back(node);
+                inMergeRegion = false;
+            }
+        }
+
+        // Create new path if we made changes
+        if (newNodes.size() != pathNodes.size()) {
+            Path newPath = Path::makeFromOrderedNodes(newNodes, it.value().isCircular());
+            if (!newPath.nodes().empty()) {
+                pathsToRemove.push_back(std::string(it.key()));
+                pathsToAdd.push_back(std::make_pair(std::string(it.key()), std::move(newPath)));
+            }
+        }
+    }
+
+    // Remove old paths and add new ones
+    for (const auto &name : pathsToRemove) {
+        m_deBruijnGraphPaths.erase(name);
+    }
+    for (auto &pair : pathsToAdd) {
+        m_deBruijnGraphPaths.emplace(pair.first, pair.second);
+    }
 }
 
 
@@ -1248,12 +1342,25 @@ int AssemblyGraph::mergeAllPossible(PathfinderGraphicsScene * scene,
     //Now do the actual merges.
     QApplication::processEvents();
     emit setMergeTotalCount(allMerges.size());
+
     for (int i = 0; i < allMerges.size(); ++i)
     {
         if (progressDialog != nullptr && progressDialog->wasCancelled())
             break;
 
-        mergeNodes(allMerges[i], scene);
+        // Check if all nodes in this merge still exist in the graph
+        bool allNodesExist = true;
+        for (auto *node : allMerges[i]) {
+            if (m_deBruijnGraphNodes.find(node->getName().toStdString()) == m_deBruijnGraphNodes.end()) {
+                allNodesExist = false;
+                break;
+            }
+        }
+
+        if (allNodesExist) {
+            mergeNodes(allMerges[i], scene);
+        }
+
         emit setMergeCompletedCount(i+1);
         QApplication::processEvents();
     }
