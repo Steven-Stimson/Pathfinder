@@ -11,7 +11,7 @@ class AlignmentScorer:
     #banning Z-connection-based links
     BANNED_Z_WEIGHT = -1000000
 
-    #Small malus for diploid tangles and nodes present in only one haplotype with multiplicity > 1
+    #Small malus for tangles with nodes present in only one haplotype with multiplicity > 1
     #R in hap1 and RR in hap2 is better than nothing in hap1 and RRR in hap2
     DEPRIORITIZE_ASSYMETRIC = -1
     def __init__(self, alignments, original_graph, node_id_mapper):
@@ -96,28 +96,32 @@ class AlignmentScorer:
                 logging.debug(f"deprioritizing {item} because of rc")
             else:
                 score += self.pattern_counts[item] * 2
-        #diploid tangles; RR + R is better than RRR + 0
-        aux_pos = -1
-        for idx in range (0, len(path)):
-            if self.node_id_mapper.node_id_to_name_safe(path[idx].original_node) == "AUX":
-                aux_pos = idx
-                break
-        if aux_pos != -1:
-            edges = [{}, {}]
-            for idx in range (len(path)):
+        #n-ploid tangles; RR + R is better than RRR + 0 (generalized for any ploidy)
+        aux_positions = []
+        for idx in range(len(path)):
+            name = self.node_id_mapper.node_id_to_unoriented_name(abs(path[idx].original_node))
+            if name.startswith("AUX"):
+                aux_positions.append(idx)
+        if aux_positions:
+            num_segments = len(aux_positions) + 1
+            edges = [{} for _ in range(num_segments)]
+            seg_idx = 0
+            aux_set = set(aux_positions)
+            for idx in range(len(path)):
+                if idx in aux_set:
+                    seg_idx += 1
+                    continue
                 e = abs(path[idx].original_node)
-                if idx < aux_pos:
-                    edge_idx = 0
-                else:
-                    edge_idx = 1
-                if not (e in edges[edge_idx]):
-                    edges[edge_idx][e] = 0
-                edges[edge_idx][e] += 1
+                if e not in edges[seg_idx]:
+                    edges[seg_idx][e] = 0
+                edges[seg_idx][e] += 1
             assymetric_nodes = 0
-            for idx in range (2):
-                for e in edges[idx]:
-                    if edges[idx][e] > 1 and not (e in edges[idx - 1]):
-                        assymetric_nodes += 1
+            for seg in range(num_segments):
+                for e in edges[seg]:
+                    if edges[seg][e] > 1:
+                        present_in_others = any(e in edges[other] for other in range(num_segments) if other != seg)
+                        if not present_in_others:
+                            assymetric_nodes += 1
             score += assymetric_nodes * self.DEPRIORITIZE_ASSYMETRIC
             logging.debug(f"Deprioritizing {assymetric_nodes} assymetric nodes")
         return score

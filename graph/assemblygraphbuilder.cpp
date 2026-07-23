@@ -497,9 +497,15 @@ namespace io {
             if (auto dpTag = gfa::getTag<float>("DP", record.tags)) {
                 graph.m_depthTag = "DP";
                 nodeDepth = *dpTag;
+            } else if (auto dpTag = gfa::getTag<int64_t>("DP", record.tags)) {
+                graph.m_depthTag = "DP";
+                nodeDepth = static_cast<double>(*dpTag);
             } else if (auto dpTag = gfa::getTag<float>("dp", record.tags)) {
                 graph.m_depthTag = "DP";
                 nodeDepth = *dpTag;
+            } else if (auto dpTag = gfa::getTag<int64_t>("dp", record.tags)) {
+                graph.m_depthTag = "DP";
+                nodeDepth = static_cast<double>(*dpTag);
             } else if (auto kaTag = gfa::getTag<float>("ka", record.tags)) {
                 graph.m_depthTag = "ka";
                 nodeDepth = *kaTag;

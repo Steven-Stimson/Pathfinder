@@ -25,6 +25,8 @@
 
 #include <QFile>
 #include <QTextStream>
+#include <set>
+#include <utility>
 
 namespace gfa {
     static void printTags(QByteArray &out, const std::vector<gfa::tag> &tags) {
@@ -178,9 +180,18 @@ namespace gfa {
         }
 
         QList<const DeBruijnEdge *> edgesToSave;
+        std::set<std::pair<std::string, std::string>> seenEdges;
         for (const DeBruijnEdge *edge : graph.m_deBruijnGraphEdges) {
-            if (edge->isPositiveEdge())
+            // Use unoriented node names for dedup to avoid exporting both
+            // "in1+ -> midA+" and "midA- -> in1-" (which are the same edge)
+            std::string n1 = edge->getStartingNode()->getNameWithoutSign().toStdString();
+            std::string n2 = edge->getEndingNode()->getNameWithoutSign().toStdString();
+            auto key = (n1 < n2) ? std::make_pair(n1, n2) : std::make_pair(n2, n1);
+
+            if (seenEdges.find(key) == seenEdges.end()) {
                 edgesToSave.push_back(edge);
+                seenEdges.insert(key);
+            }
         }
 
         std::sort(edgesToSave.begin(), edgesToSave.end(), DeBruijnEdge::compareEdgePointers);

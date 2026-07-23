@@ -7,4 +7,7 @@ TTT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate TTT
 
+# Ensure glpsol can find its shared libraries
+export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH}"
+
 exec python3 "${TTT_DIR}/TTT.py" "$@"

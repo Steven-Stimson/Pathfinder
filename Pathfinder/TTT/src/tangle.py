@@ -33,10 +33,10 @@ class Tangle:
         detected_coverage (float): Final calculated unique coverage from MIP
     """
     
-    def __init__(self, nodes, nor_nodes, boundary_nodes, original_graph, dual_graph, node_id_mapper):
+    def __init__(self, nodes, nor_nodes, boundary_nodes, original_graph, dual_graph, node_id_mapper, ploidy=2):
         """
         Initialize a Tangle with core structural information.
-        
+
         Args:
             nodes (set): Oriented node IDs within the tangle
             nor_nodes (set): Non-oriented/absolute node IDs
@@ -44,6 +44,7 @@ class Tangle:
             original_graph (nx.DiGraph): Original GFA graph
             dual_graph (nx.DiGraph): Dual graph representation
             node_id_mapper (NodeIdMapper): Node ID to name mapper
+            ploidy (int): Ploidy level (default: 2)
         """
         # Core structural data
         self.nodes: Set[int] = nodes
@@ -52,7 +53,8 @@ class Tangle:
         self.original_graph: nx.DiGraph = original_graph
         self.dual_graph: nx.DiGraph = dual_graph
         self.node_id_mapper: NodeIdMapper = node_id_mapper
-        
+        self.ploidy: int = ploidy
+
         # Solution/derived attributes (to be set later)
         # These will be populated progressively as the pipeline executes
         self.cleaned_tips: List[int] = []

@@ -151,6 +151,7 @@ def parse_arguments():
     parser.add_argument("--early-stopping-limit", type=int, default=15000, help="Early stopping limit for optimization (default: 15000).")
     parser.add_argument("--quality-threshold", type=int, default=20, help="Alignments with quality less than this will be filtered out, default 20")
     parser.add_argument("--basename", required=False, default="traversal", type=str, help="Basename for most of the output files, default `traversal`")
+    parser.add_argument("--ploidy", type=int, default=2, help="Ploidy level of the organism. Determines the number of boundary node pairs expected (default: 2, i.e. diploid).")
     parser.add_argument("--milp-time-limit", type=int, default=7200, help="Time limit for MILP solver in seconds (default: 7200 seconds = 2 hour).")
     parser.add_argument("--output-gfa", action="store_true", default=False, help="Output traversal paths as GFA files.")
     parser.add_argument("--output-mode", type=str, default="all", choices=["all", "merged", "per-path", "concatenated"],
@@ -216,10 +217,19 @@ def main():
         boundary_nodes=boundary_nodes,
         original_graph=original_graph,
         dual_graph=dual_graph,
-        node_id_mapper=node_id_mapper
+        node_id_mapper=node_id_mapper,
+        ploidy=args.ploidy
     )
     
-    #TODO: do all operations on dual graph        
+    # Validate ploidy matches boundary node pairs
+    num_boundary_pairs = len(boundary_nodes)
+    if num_boundary_pairs != args.ploidy:
+        logging.warning(
+            f"Ploidy ({args.ploidy}) does not match the number of boundary node pairs ({num_boundary_pairs}). "
+            f"Expected {args.ploidy} pairs for {args.ploidy}-ploid organism."
+        )
+
+    #TODO: do all operations on dual graph
     tangle.cleaned_tips = clean_tips(tangle, node_id_mapper)
     tangle.dual_graph = create_dual_graph(original_graph, node_id_mapper)
     
@@ -344,16 +354,20 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
                 if len(parts) >= 3:
                     original_slines[parts[1]] = parts
 
-    # Split path at AUX marker (same logic as output_path)
-    aux = -1
-    if tangle.node_id_mapper.has_name("AUX"):
-        aux_id = tangle.node_id_mapper.get_id_for_name("AUX")
-        for i in range(len(best_path)):
-            if abs(best_path[i].original_node) == aux_id:
-                aux = i
-                break
-    if aux > 0:
-        paths = [best_path[:aux], best_path[aux + 1:]]
+    # Split path at AUX marker(s) (same logic as output_path)
+    aux_positions = []
+    for i in range(len(best_path)):
+        name = tangle.node_id_mapper.node_id_to_unoriented_name(abs(best_path[i].original_node))
+        if name.startswith("AUX"):
+            aux_positions.append(i)
+    aux_positions.sort()
+    if aux_positions:
+        paths = []
+        prev = 0
+        for pos in aux_positions:
+            paths.append(best_path[prev:pos])
+            prev = pos + 1
+        paths.append(best_path[prev:])
     else:
         paths = [best_path]
 
@@ -473,43 +487,44 @@ def write_gfa_output(args, best_path, pathOptimizer, tangle):
         logging.info(f"Wrote merged GFA to {gfa_path}: {len(all_nodes)} nodes, {len(all_edges)} edges, {len(path_lines)} paths")
 
     # Helper function to write S-line with proper tags
+    num_paths = len(paths)
     def write_sline(f, seg_name, original_name, node_id, is_shared, path_idx):
-        """Write S-line with full tags from original GFA. For shared nodes, halve depth values."""
+        """Write S-line with full tags from original GFA. For shared nodes, divide depth values by number of paths."""
         if original_name in original_slines:
             parts = original_slines[original_name]
             new_parts = [parts[0], seg_name] + parts[2:]
-            # For shared nodes, halve depth-related tags
+            # For shared nodes, divide depth-related tags by number of paths
             if is_shared:
                 final_parts = [new_parts[0], new_parts[1], new_parts[2]]  # S, name, seq
                 for tag in new_parts[3:]:
                     if tag.startswith('DP:f:'):
                         try:
                             val = float(tag[5:])
-                            final_parts.append(f'DP:f:{val / 2.0}')
+                            final_parts.append(f'DP:f:{val / num_paths}')
                         except ValueError:
                             final_parts.append(tag)
                     elif tag.startswith('ll:f:'):
                         try:
                             val = float(tag[5:])
-                            final_parts.append(f'll:f:{val / 2.0}')
+                            final_parts.append(f'll:f:{val / num_paths}')
                         except ValueError:
                             final_parts.append(tag)
                     elif tag.startswith('ll:i:'):
                         try:
                             val = int(tag[5:])
-                            final_parts.append(f'll:i:{val // 2}')
+                            final_parts.append(f'll:i:{val // num_paths}')
                         except ValueError:
                             final_parts.append(tag)
                     elif tag.startswith('fc:f:'):
                         try:
                             val = float(tag[5:])
-                            final_parts.append(f'fc:f:{val / 2.0}')
+                            final_parts.append(f'fc:f:{val / num_paths}')
                         except ValueError:
                             final_parts.append(tag)
                     elif tag.startswith('RC:i:'):
                         try:
                             val = int(tag[5:])
-                            final_parts.append(f'RC:i:{val // 2}')
+                            final_parts.append(f'RC:i:{val // num_paths}')
                         except ValueError:
                             final_parts.append(tag)
                     else:

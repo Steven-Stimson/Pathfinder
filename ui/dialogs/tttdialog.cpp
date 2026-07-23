@@ -99,6 +99,7 @@ void TTTDialog::loadSettings()
     ui->earlyStoppingSpinBox->setValue(g_settings->tttEarlyStoppingLimit > 0 ? g_settings->tttEarlyStoppingLimit : 15000);
     ui->logLevelComboBox->setCurrentIndex(g_settings->tttLogLevel);
     ui->basenameEdit->setText(g_settings->tttBasename.isEmpty() ? "traversal" : g_settings->tttBasename);
+    ui->ploidySpinBox->setValue(g_settings->tttPloidy > 0 ? g_settings->tttPloidy : 2);
 }
 
 void TTTDialog::saveSettings()
@@ -115,6 +116,7 @@ void TTTDialog::saveSettings()
     g_settings->tttEarlyStoppingLimit = ui->earlyStoppingSpinBox->value();
     g_settings->tttLogLevel = ui->logLevelComboBox->currentIndex();
     g_settings->tttBasename = ui->basenameEdit->text();
+    g_settings->tttPloidy = ui->ploidySpinBox->value();
 }
 
 void TTTDialog::browseGaf()
@@ -308,6 +310,9 @@ void TTTDialog::runTTT()
     if (!basename.isEmpty())
         args << "--basename" << basename;
 
+    // Ploidy
+    args << "--ploidy" << QString::number(ui->ploidySpinBox->value());
+
     // Add multiple alignment files
     if (!m_alignmentFiles.isEmpty()) {
         args << "--alignment";
@@ -397,6 +402,10 @@ void TTTDialog::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
         if (basename.isEmpty())
             basename = "traversal";
 
+        appendLog(QString("\n[DEBUG] Output dir: %1\n").arg(m_outputDir));
+        appendLog(QString("[DEBUG] Basename: %1\n").arg(basename));
+        appendLog(QString("[DEBUG] Files in output dir: %1\n").arg(outDir.entryList({"*.gfa"}, QDir::Files).join(", ")));
+
         // Load the appropriate GFA based on output mode
         int mode = ui->outputModeComboBox->currentIndex();
         if (mode == 0 || mode == 1) {
@@ -417,12 +426,17 @@ void TTTDialog::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
                 m_outputGfaPath = path0Gfa;
         }
 
+        appendLog(QString("\n[DEBUG] Looking for: %1\n").arg(m_outputDir + "/" + basename + "_path.merged.gfa"));
+        appendLog(QString("[DEBUG] File exists: %1\n").arg(QFile::exists(m_outputDir + "/" + basename + "_path.merged.gfa") ? "YES" : "NO"));
+
         if (m_outputGfaPath.isEmpty()) {
             QStringList gfaFiles = outDir.entryList({"*.gfa"}, QDir::Files);
+            appendLog(QString("[DEBUG] Fallback - GFA files found: %1\n").arg(gfaFiles.join(", ")));
             if (!gfaFiles.isEmpty())
                 m_outputGfaPath = m_outputDir + "/" + gfaFiles.first();
         }
 
+        appendLog(QString("\n[DEBUG] Final outputGfaPath: %1\n").arg(m_outputGfaPath));
         if (!m_outputGfaPath.isEmpty())
             appendLog(QString("\nLoading: %1\n").arg(m_outputGfaPath));
 
@@ -483,6 +497,7 @@ void TTTDialog::setRunningState(bool running)
     ui->mipTimeLimitSpinBox->setEnabled(!running);
     ui->initialPathsSpinBox->setEnabled(!running);
     ui->maxIterSpinBox->setEnabled(!running);
+    ui->ploidySpinBox->setEnabled(!running);
     ui->browseGafButton->setEnabled(!running);
     ui->removeAlignmentButton->setEnabled(!running);
     ui->clearAlignmentButton->setEnabled(!running);

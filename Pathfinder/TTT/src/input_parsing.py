@@ -43,7 +43,9 @@ def parse_gfa(file_path, node_mapper) -> nx.DiGraph:
                 for part in parts:
                     if part.startswith('LN:i:'):
                         length = int(part.split(':')[2])
-                    elif part.startswith('ll:') or part.startswith('DP:f:'):
+                    elif part.startswith('ll:') or part.startswith('DP:f:') or part.startswith('dp:f:'):
+                        cov = float(part.split(':')[2])
+                    elif part.startswith('DP:i:') or part.startswith('dp:i:'):
                         cov = float(part.split(':')[2])
                 original_graph.add_node(node_id, length=length, sequence=parts[2], coverage = cov)
                 original_graph.add_node(-node_id, length=length, sequence=reverse_complement(parts[2]), coverage = cov)
@@ -602,25 +604,29 @@ def identify_tangle_nodes(args, original_graph:nx.DiGraph, node_mapper:NodeIdMap
             log_assert(node1 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node1)} not found in the provided graph {args.graph} ")
             log_assert(node2 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node2)} not found in the provided graph {args.graph} ")
             boundary.append([node1, node2])
-    log_assert(len(boundary) >=1 and len(boundary) <= 2, f"Expected 1 or 2 pairs of boundary nodes, got {len(boundary)}")    
+    log_assert(len(boundary) >=1 and len(boundary) <= args.ploidy, f"Expected {args.ploidy} pairs of boundary nodes for {args.ploidy}-ploid organism, got {len(boundary)}")
 
     indirect_graph = get_nonoriented_graph(original_graph)
 
     #we want paths to be collinear, so sometimes will initiate swaps within the pair
-    if len (boundary) == 2:
-        dists = [[],[]]
+    if len (boundary) >= 2:
         logging.debug("Checking pairwise unoriented distances between boundary nodes")
-        for i in range (2):
-            for j in range(2):
-                dists[i].append(nx.shortest_path_length(indirect_graph, boundary[0][i], boundary[1][j],  weight='mid_length') - original_graph.nodes[boundary[0][i]].get('length', 0) - original_graph.nodes[boundary[1][j]].get('length', 0))
-        logging.debug(f"unoriented distances between borders {dists}")
-        if dists[0][0] < dists[0][1] and dists[1][1] < dists[1][0]:
-            logging.debug(f"Distances look fine")
-        elif dists[0][0] > dists[0][1] and dists[1][1] > dists[1][0]:
-            logging.debug(f"Swapping boundary nodes for better collinearity")
-            boundary[1] = boundary[1][::-1]
-        else:
-            logging.debug(f"Boundary node pairs do not allow to detecte collinear paths")
+        for pair_idx in range(len(boundary) - 1):
+            dists = [[],[]]
+            for i in range (2):
+                for j in range(2):
+                    try:
+                        dists[i].append(nx.shortest_path_length(indirect_graph, boundary[pair_idx][i], boundary[pair_idx+1][j],  weight='mid_length') - original_graph.nodes[boundary[pair_idx][i]].get('length', 0) - original_graph.nodes[boundary[pair_idx+1][j]].get('length', 0))
+                    except nx.NetworkXNoPath:
+                        dists[i].append(float('inf'))
+            logging.debug(f"unoriented distances between borders {pair_idx} and {pair_idx+1}: {dists}")
+            if dists[0][0] < dists[0][1] and dists[1][1] < dists[1][0]:
+                logging.debug(f"Distances look fine for pair {pair_idx+1}")
+            elif dists[0][0] > dists[0][1] and dists[1][1] > dists[1][0]:
+                logging.debug(f"Swapping boundary nodes for better collinearity for pair {pair_idx+1}")
+                boundary[pair_idx+1] = boundary[pair_idx+1][::-1]
+            else:
+                logging.debug(f"Boundary node pairs {pair_idx} and {pair_idx+1} do not allow to detect collinear paths")
 
 
     source_name = node_mapper.node_id_to_name_safe(boundary[0][0])
@@ -642,12 +648,25 @@ def identify_tangle_nodes(args, original_graph:nx.DiGraph, node_mapper:NodeIdMap
     #TODO: incoming/outgoing check
     valid_tangle = True
     for boundary_pair in boundary:
-        for boundary_node in boundary_pair:       
+        for boundary_node in boundary_pair:
+            has_tangle_pred = False
+            has_tangle_succ = False
             for pred in original_graph.predecessors(boundary_node):
-                for succ in original_graph.successors(boundary_node):
-                    if abs(pred) in tangle_component and abs(succ) in tangle_component:
-                        logging.error(f"Boundary nodes do not separate incoming and outgoing nodes for {node_mapper.node_id_to_name_safe(boundary_node)}, fix the boundary nodes")
-                        valid_tangle = False
+                abs_pred = abs(pred)
+                if abs_pred in tangle_component and abs_pred != abs(boundary_node):
+                    has_tangle_pred = True
+            for succ in original_graph.successors(boundary_node):
+                abs_succ = abs(succ)
+                if abs_succ in tangle_component and abs_succ != abs(boundary_node):
+                    has_tangle_succ = True
+            if has_tangle_pred and has_tangle_succ:
+                tangle_preds = set(abs(p) for p in original_graph.predecessors(boundary_node) if abs(p) in tangle_component and abs(p) != abs(boundary_node))
+                tangle_succs = set(abs(s) for s in original_graph.successors(boundary_node) if abs(s) in tangle_component and abs(s) != abs(boundary_node))
+                if tangle_preds != tangle_succs:
+                    logging.error(f"Boundary nodes do not separate incoming and outgoing nodes for {node_mapper.node_id_to_name_safe(boundary_node)}, fix the boundary nodes")
+                    valid_tangle = False
+                else:
+                    logging.debug(f"Boundary node {node_mapper.node_id_to_name_safe(boundary_node)} has matching pred/succ sets (likely RC edges), accepting")
             
     if not valid_tangle:
         logging.error(f"Boundary nodes do not identify a valid tangle, exiting")
@@ -696,28 +715,32 @@ def new_identify_tangle_nodes(args, original_graph:nx.DiGraph, dual_graph:nx.DiG
             log_assert(node1 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node1)} not found in the provided graph {args.graph} ")
             log_assert(node2 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node2)} not found in the provided graph {args.graph} ")
             boundary.append([node1, node2])
-    log_assert(len(boundary) >=1 and len(boundary) <= 2, f"Expected 1 or 2 pairs of boundary nodes, got {len(boundary)}")    
+    log_assert(len(boundary) >=1 and len(boundary) <= args.ploidy, f"Expected {args.ploidy} pairs of boundary nodes for {args.ploidy}-ploid organism, got {len(boundary)}")
 
-    indirect_graph = get_nonoriented_graph(original_graph)    
+    indirect_graph = get_nonoriented_graph(original_graph)
     indirect_dual_graph = get_nonoriented_dual_graph(dual_graph, node_mapper)
     #all nodes have positive ids in both indirect graphs
 
     #we want paths to be collinear, so sometimes will initiate swaps within the pair
     #TODO: likely not needed after inverted swaps introduction
-    if len (boundary) == 2:
-        dists = [[],[]]
+    if len (boundary) >= 2:
         logging.debug("Checking pairwise unoriented distances between boundary nodes")
-        for i in range (2):
-            for j in range(2):
-                dists[i].append(nx.shortest_path_length(indirect_graph, boundary[0][i], boundary[1][j],  weight='mid_length') - original_graph.nodes[boundary[0][i]].get('length', 0) - original_graph.nodes[boundary[1][j]].get('length', 0))
-        logging.debug(f"unoriented distances between borders {dists}")
-        if dists[0][0] < dists[0][1] and dists[1][1] < dists[1][0]:
-            logging.debug(f"Distances look fine")
-        elif dists[0][0] > dists[0][1] and dists[1][1] > dists[1][0]:
-            logging.debug(f"Swapping boundary nodes for better collinearity")
-            boundary[1] = boundary[1][::-1]
-        else:
-            logging.debug(f"Boundary node pairs do not allow to detecte collinear paths")
+        for pair_idx in range(len(boundary) - 1):
+            dists = [[],[]]
+            for i in range (2):
+                for j in range(2):
+                    try:
+                        dists[i].append(nx.shortest_path_length(indirect_graph, boundary[pair_idx][i], boundary[pair_idx+1][j],  weight='mid_length') - original_graph.nodes[boundary[pair_idx][i]].get('length', 0) - original_graph.nodes[boundary[pair_idx+1][j]].get('length', 0))
+                    except nx.NetworkXNoPath:
+                        dists[i].append(float('inf'))
+            logging.debug(f"unoriented distances between borders {pair_idx} and {pair_idx+1}: {dists}")
+            if dists[0][0] < dists[0][1] and dists[1][1] < dists[1][0]:
+                logging.debug(f"Distances look fine for pair {pair_idx+1}")
+            elif dists[0][0] > dists[0][1] and dists[1][1] > dists[1][0]:
+                logging.debug(f"Swapping boundary nodes for better collinearity for pair {pair_idx+1}")
+                boundary[pair_idx+1] = boundary[pair_idx+1][::-1]
+            else:
+                logging.debug(f"Boundary node pairs {pair_idx} and {pair_idx+1} do not allow to detect collinear paths")
     found_internal = False
 
     source_name = node_mapper.node_id_to_name_safe(boundary[0][0])
@@ -772,12 +795,27 @@ def new_identify_tangle_nodes(args, original_graph:nx.DiGraph, dual_graph:nx.DiG
     logging.info(f"Total {len(tangle_component)} tangle nodes in connected component")
     valid_tangle = True
     for boundary_pair in boundary:
-        for boundary_node in boundary_pair:       
+        for boundary_node in boundary_pair:
+            has_tangle_pred = False
+            has_tangle_succ = False
             for pred in original_graph.predecessors(boundary_node):
-                for succ in original_graph.successors(boundary_node):
-                    if abs(pred) in tangle_component and abs(succ) in tangle_component:
-                        logging.error(f"Boundary nodes do not separate incoming and outgoing nodes for {node_mapper.node_id_to_name_safe(boundary_node)}, fix the boundary nodes")
-                        exit(1)
+                abs_pred = abs(pred)
+                if abs_pred in tangle_component and abs_pred != abs(boundary_node):
+                    has_tangle_pred = True
+            for succ in original_graph.successors(boundary_node):
+                abs_succ = abs(succ)
+                if abs_succ in tangle_component and abs_succ != abs(boundary_node):
+                    has_tangle_succ = True
+            if has_tangle_pred and has_tangle_succ:
+                # Check if the tangle pred and succ are just reverse complement pairs of the same node
+                tangle_preds = set(abs(p) for p in original_graph.predecessors(boundary_node) if abs(p) in tangle_component and abs(p) != abs(boundary_node))
+                tangle_succs = set(abs(s) for s in original_graph.successors(boundary_node) if abs(s) in tangle_component and abs(s) != abs(boundary_node))
+                # Only fail if there exist pred and succ that are different nodes (not just RC of same node)
+                if tangle_preds != tangle_succs:
+                    logging.error(f"Boundary nodes do not separate incoming and outgoing nodes for {node_mapper.node_id_to_name_safe(boundary_node)}, fix the boundary nodes")
+                    exit(1)
+                else:
+                    logging.debug(f"Boundary node {node_mapper.node_id_to_name_safe(boundary_node)} has matching pred/succ sets (likely RC edges), accepting")
     log_assert(len(dual_tangle_component) < len(original_component), f"Boundary nodes do not isolate tangle from the rest of the component!!!")        
     logging.info (f"Original component size: {len(original_component)} vertices, tangle component size: {len(dual_tangle_component)} vertices, Tangle size: {len(tangle_component)} gfa nodes")
     tangle_nodes = set()

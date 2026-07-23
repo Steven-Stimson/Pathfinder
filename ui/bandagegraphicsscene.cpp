@@ -252,7 +252,8 @@ void PathfinderGraphicsScene::addGraphicsItemsToScene(AssemblyGraph &graph,
                 new GraphicsItemEdge(edge, graph);
         edge->setGraphicsItemEdge(graphicsItemEdge);
         graphicsItemEdge->setFlag(QGraphicsItem::ItemIsSelectable);
-        addItem(graphicsItemEdge);
+        if (!graphicsItemEdge->scene())
+            addItem(graphicsItemEdge);
     }
 
     // Now add the GraphicsItemNode objects to the scene, so they are drawn
@@ -261,7 +262,9 @@ void PathfinderGraphicsScene::addGraphicsItemsToScene(AssemblyGraph &graph,
         if (!node->hasGraphicsItem())
             continue;
 
-        addItem(node->getGraphicsItemNode());
+        auto *graphicsItem = node->getGraphicsItemNode();
+        if (graphicsItem && !graphicsItem->scene())
+            addItem(graphicsItem);
     }
 }
 

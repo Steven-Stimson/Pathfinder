@@ -174,8 +174,8 @@ def get_traversable_subgraph(tangle):
         s += f"{tangle.node_id_mapper.node_id_to_name_safe(b)}->{tangle.node_id_mapper.node_id_to_name_safe(tangle.boundary_nodes[b])} "    
     logging.info(f"Boundary nodes and their connections: {s}")
     border_nodes_count = len(tangle.boundary_nodes)
-    # Only 1-1 or 2-2 tangles for now
-    log_assert(border_nodes_count == 1 or border_nodes_count == 2, f"Only 1-1 or 2-2 tangles are supported")
+    # Support n-n tangles for n-ploidy (1 pair per haplotype)
+    log_assert(border_nodes_count >= 1, f"At least 1 boundary node pair is required, got {border_nodes_count}")
     log_assert(len(start_vertices) == border_nodes_count and len(end_vertices) == border_nodes_count, f"Start and end vertices count mismatch: {len(start_vertices)} vs {border_nodes_count} or {len(end_vertices)} vs {border_nodes_count}")
     start_vertices.sort()
     start_vertex = start_vertices[0]
@@ -241,8 +241,8 @@ def get_traversable_subgraph(tangle):
         descendants = nx.descendants(multi_dual_graph, start_vertices[i])
         if not v in descendants:            
             logging.error(f"One of the exit nodes {v} is not reachable from corresponding start vertex {start_vertices[i]}")
-            logging.error(f"It is weird but possible situation for 2-2 tangles that mostly consists of a large inverted repeat, TTT currently cannot handle it properly")
-            logging.error(f"Suggested workaround is to reconsider tangle borders to increase the tangle a bit (add additional diploid bulge to the tangle")
+            logging.error(f"It is weird but possible situation for tangles that mostly consists of a large inverted repeat, TTT currently cannot handle it properly")
+            logging.error(f"Suggested workaround is to reconsider tangle borders to increase the tangle a bit (add additional bulge to the tangle")
             exit(1)
 
     if (len(unreachable_edges) != 0):
@@ -255,11 +255,13 @@ def get_traversable_subgraph(tangle):
             multi_dual_graph.remove_edge(e[0], e[1], key = e[2])
         logging.warning(out_str)
 
-    if border_nodes_count == 2:
-        aux_node_str = "AUX"
+    for aux_idx in range(border_nodes_count - 1):
+        aux_node_str = f"AUX{aux_idx}"
         aux_int_id = tangle.node_id_mapper.parse_node_id(aux_node_str)
-        multi_dual_graph.add_edge(matching_end_vertices[0], start_vertices[1], original_node=aux_int_id, key=f"{aux_int_id}_0")
-        logging.info(f"Added auxiliary edge from {tangle.node_id_mapper.node_id_to_name_safe(matching_end_vertex_node)} to {tangle.node_id_mapper.node_id_to_name_safe(start_vertices[1][1])}")       
+        from_vertex = matching_end_vertices[aux_idx]
+        to_vertex = start_vertices[aux_idx + 1]
+        multi_dual_graph.add_edge(from_vertex, to_vertex, original_node=aux_int_id, key=f"{aux_int_id}_{aux_idx}")
+        logging.info(f"Added auxiliary edge {aux_idx} from {tangle.node_id_mapper.node_id_to_name_safe(from_vertex[0])} to {tangle.node_id_mapper.node_id_to_name_safe(to_vertex[1])}")       
 
     reachable_subgraph = multi_dual_graph.subgraph(reachable_vertices)
     return reachable_subgraph, start_vertex

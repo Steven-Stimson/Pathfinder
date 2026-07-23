@@ -108,13 +108,20 @@ class PathOptimizer:
         return
 #TODO: generate all changes, shuffle, try to apply one by one.
 
-    def get_aux_position(self):
-        if self.node_mapper and self.node_mapper.has_name("AUX"):
-            aux_id = self.node_mapper.get_id_for_name("AUX")
+    def get_aux_positions(self):
+        """Return sorted list of all AUX marker positions in the path."""
+        positions = []
+        if self.node_mapper:
             for idx, edge_descr in enumerate(self.traversing_path):
-                if edge_descr.original_node == aux_id:
-                    return idx
-        return -1
+                name = self.node_mapper.node_id_to_unoriented_name(abs(edge_descr.original_node))
+                if name.startswith("AUX"):
+                    positions.append(idx)
+        return sorted(positions)
+
+    def get_aux_position(self):
+        """Return the first AUX marker position (backward compatibility)."""
+        positions = self.get_aux_positions()
+        return positions[0] if positions else -1
 
     #TODO: random permutation for the arrays and then unite with synonymous changes
     def get_random_change(self, iter):
@@ -143,9 +150,9 @@ class PathOptimizer:
                     if not j_candidates:
                         continue
                     j = random.choice(j_candidates)
-                    # not allowing to invert AUX node                
-                    aux_pos = self.get_aux_position()
-                    if  i <= aux_pos <= j:
+                    # not allowing to invert AUX node
+                    aux_positions = self.get_aux_positions()
+                    if any(i <= ap <= j for ap in aux_positions):
                         logging.debug(f"Skipping inversion due to AUX node presence between {i} and {j}")
                         continue
                     
@@ -172,9 +179,9 @@ class PathOptimizer:
                         
                         l = random.choice(l_candidates)
                         # Swap the intervals
-                        aux_pos = self.get_aux_position()
-                        if(i <= aux_pos <= j or k <= aux_pos <= l):
-                            logging.debug(f"Skipping RC swap due to AUX node presence (pos {aux_pos}) between {i}-{j} or {k}-{l}")
+                        aux_positions = self.get_aux_positions()
+                        if any(i <= ap <= j or k <= ap <= l for ap in aux_positions):
+                            logging.debug(f"Skipping RC swap due to AUX node presence between {i}-{j} or {k}-{l}")
                             continue
                         new_path = (
                             self.traversing_path[:i]
@@ -309,11 +316,12 @@ class PathOptimizer:
                             logging.debug(f"Inversion {start_path_ind}-{end_path_ind} does not change score")
                             logging.debug(f"Edge paths are {get_gaf_string(self.traversing_path[start_path_ind:end_path_ind + 1], self.node_mapper)}")
                         else:
-                            aux_pos = self.get_aux_position()    
-                            if (start_path_ind <= aux_pos <= end_path_ind):
-                                logging.warning(f"Unexpected final score improved {new_score} > {final_score} and affects AUX position {aux_pos}")
+                            aux_positions = self.get_aux_positions()
+                            affected = any(start_path_ind <= ap <= end_path_ind for ap in aux_positions)
+                            if affected:
+                                logging.warning(f"Unexpected final score improved {new_score} > {final_score} and affects AUX position(s)")
                             else:
-                                logging.warning(f"Unexpected final score improved {new_score} > {final_score} and does not affect AUX position {aux_pos}")
+                                logging.warning(f"Unexpected final score improved {new_score} > {final_score} and does not affect AUX position(s)")
         #TODO: check for possible inversions+swaps?
         if len(invertable_intervals) + len(swappable_intervals) > 0:
             if len(swappable_intervals) > 0:
@@ -331,16 +339,15 @@ class PathOptimizer:
 
     def output_path(self, original_graph, output_fasta, output_gaf):
         """Output the best path to FASTA and GAF files."""
-        aux = -1
-        if self.node_mapper.has_name("AUX"):
-            aux_id = self.node_mapper.get_id_for_name("AUX")
-            for i in range(len(self.traversing_path)):
-                if abs(self.traversing_path[i].original_node) == aux_id:
-                    aux = i
-                    logging.debug(f"Found AUX at position {aux}")
-                    break
-        if aux > 0:
-            paths = [self.traversing_path[:aux], self.traversing_path[aux + 1:]]
+        aux_positions = self.get_aux_positions()
+        if aux_positions:
+            paths = []
+            prev = 0
+            for pos in aux_positions:
+                paths.append(self.traversing_path[prev:pos])
+                prev = pos + 1
+            paths.append(self.traversing_path[prev:])
+            logging.debug(f"Split path at {len(aux_positions)} AUX marker(s) into {len(paths)} segments")
         else:
             paths = [self.traversing_path]
 
