@@ -91,29 +91,43 @@ def auto_detect_tangles(all_pairs, original_graph, node_mapper):
     # Create undirected graph for path finding
     undirected_graph = original_graph.to_undirected()
 
-    # Parse all pairs to node IDs
+    # Parse all pairs to node IDs - skip invalid pairs
     parsed_pairs = []
     for pair in all_pairs:
         try:
             node1 = node_mapper.parse_node_id(pair[0])
             node2 = node_mapper.parse_node_id(pair[1])
-            if node1 in original_graph.nodes() and node2 in original_graph.nodes():
+            # Check both oriented and unoriented node IDs
+            abs_node1 = abs(node1)
+            abs_node2 = abs(node2)
+            if abs_node1 in undirected_graph.nodes() and abs_node2 in undirected_graph.nodes():
                 parsed_pairs.append((pair, node1, node2))
-        except:
+            else:
+                logging.warning(f"Boundary node {pair[0]} or {pair[1]} not found in graph, skipping")
+        except Exception as e:
+            logging.warning(f"Failed to parse boundary pair {pair}: {e}")
             continue
 
     if not parsed_pairs:
+        logging.warning("No valid boundary pairs found")
         return [all_pairs]
 
     # For each pair, find the path between the nodes
     pair_paths = []
-    for pair_info, node1, node2 in parsed_pairs:
+    valid_indices = []
+    for idx, (pair_info, node1, node2) in enumerate(parsed_pairs):
         try:
             path = nx.shortest_path(undirected_graph, abs(node1), abs(node2))
             pair_paths.append((pair_info, set(path)))
+            valid_indices.append(idx)
         except nx.NetworkXNoPath:
-            # If no path, treat as separate tangle
+            # If no path, this pair defines its own tangle
+            logging.info(f"No path between {pair_info[0]} and {pair_info[1]}, treating as separate tangle")
             pair_paths.append((pair_info, {abs(node1), abs(node2)}))
+            valid_indices.append(idx)
+
+    if not pair_paths:
+        return [all_pairs]
 
     # Build connectivity graph between pairs
     n = len(pair_paths)
@@ -122,9 +136,13 @@ def auto_detect_tangles(all_pairs, original_graph, node_mapper):
 
     for i in range(n):
         for j in range(i + 1, n):
-            # If paths share nodes, pairs are in the same tangle
+            # If paths share internal nodes (not just endpoints), pairs are in the same tangle
             shared_nodes = pair_paths[i][1] & pair_paths[j][1]
-            if shared_nodes:
+            # Exclude the boundary nodes themselves from the shared check
+            i_nodes = {abs(parsed_pairs[valid_indices[i]][1]), abs(parsed_pairs[valid_indices[i]][2])}
+            j_nodes = {abs(parsed_pairs[valid_indices[j]][1]), abs(parsed_pairs[valid_indices[j]][2])}
+            internal_shared = shared_nodes - i_nodes - j_nodes
+            if internal_shared:
                 connectivity.add_edge(i, j)
 
     # Find connected components - each component is a tangle

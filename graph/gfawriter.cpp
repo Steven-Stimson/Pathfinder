@@ -24,6 +24,7 @@
 #include "program/colormap.h"
 
 #include <QFile>
+#include <QSet>
 #include <QTextStream>
 #include <set>
 #include <utility>
@@ -174,20 +175,37 @@ namespace gfa {
 
         QTextStream out(&file);
 
+        // Export segments - only positive nodes, skip duplicates
+        QSet<QString> exportedNodes;
         for (const auto *node: graph.m_deBruijnGraphNodes) {
-            if (node->isPositiveNode())
-                out << getGfaSegmentLine(node, graph, graph.m_depthTag) << '\n';
+            if (!node->isPositiveNode())
+                continue;
+            QString name = node->getNameWithoutSign();
+            if (exportedNodes.contains(name))
+                continue;  // Skip duplicate node
+            exportedNodes.insert(name);
+            out << getGfaSegmentLine(node, graph, graph.m_depthTag) << '\n';
         }
 
         QList<const DeBruijnEdge *> edgesToSave;
         std::set<std::pair<std::string, std::string>> seenEdges;
+        // First pass: collect forward-forward edges (both nodes positive)
         for (const DeBruijnEdge *edge : graph.m_deBruijnGraphEdges) {
-            // Use unoriented node names for dedup to avoid exporting both
-            // "in1+ -> midA+" and "midA- -> in1-" (which are the same edge)
+            if (!edge->getStartingNode()->isPositiveNode() || !edge->getEndingNode()->isPositiveNode())
+                continue;
             std::string n1 = edge->getStartingNode()->getNameWithoutSign().toStdString();
             std::string n2 = edge->getEndingNode()->getNameWithoutSign().toStdString();
             auto key = (n1 < n2) ? std::make_pair(n1, n2) : std::make_pair(n2, n1);
-
+            if (seenEdges.find(key) == seenEdges.end()) {
+                edgesToSave.push_back(edge);
+                seenEdges.insert(key);
+            }
+        }
+        // Second pass: add remaining edges (mixed-sign) if not already seen
+        for (const DeBruijnEdge *edge : graph.m_deBruijnGraphEdges) {
+            std::string n1 = edge->getStartingNode()->getNameWithoutSign().toStdString();
+            std::string n2 = edge->getEndingNode()->getNameWithoutSign().toStdString();
+            auto key = (n1 < n2) ? std::make_pair(n1, n2) : std::make_pair(n2, n1);
             if (seenEdges.find(key) == seenEdges.end()) {
                 edgesToSave.push_back(edge);
                 seenEdges.insert(key);

@@ -419,6 +419,8 @@ void TTTDialog::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
 
         if (m_outputGfaPath.isEmpty()) {
             QStringList gfaFiles = outDir.entryList({"*.gfa"}, QDir::Files);
+            // Exclude input.gfa from fallback options
+            gfaFiles.removeAll("input.gfa");
             if (!gfaFiles.isEmpty())
                 m_outputGfaPath = m_outputDir + "/" + gfaFiles.first();
         }

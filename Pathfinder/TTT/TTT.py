@@ -325,16 +325,17 @@ def process_single_tangle(args, original_graph, dual_graph, cov, alt_cov, bounda
     return merged_gfa_path
 
 
-def merge_gfa_files(gfa_files, output_path, original_graph_path):
-    """Merge multiple merged.gfa files into a single file.
+def merge_gfa_files(gfa_files, output_path, original_graph_path, tangle_nodes=None):
+    """Merge multiple merged.gfa files into a single file, preserving non-tangle nodes.
 
     Args:
         gfa_files: List of paths to merged.gfa files
         output_path: Path to write the combined GFA
-        original_graph_path: Path to original GFA for header info
+        original_graph_path: Path to original GFA for header info and non-tangle nodes
+        tangle_nodes: Set of node names that are part of tangles (to exclude from original)
     """
-    if not gfa_files:
-        return
+    if tangle_nodes is None:
+        tangle_nodes = set()
 
     all_s_lines = {}  # node_name -> S-line
     all_l_lines = []  # L-lines
@@ -344,6 +345,7 @@ def merge_gfa_files(gfa_files, output_path, original_graph_path):
     seen_l_lines = set()
     path_counter = 0
 
+    # First, read all tangle GFA files
     for gfa_file in gfa_files:
         if not gfa_file or not os.path.exists(gfa_file):
             continue
@@ -355,7 +357,6 @@ def merge_gfa_files(gfa_files, output_path, original_graph_path):
                     continue
 
                 if line.startswith('S'):
-                    # S-line: S name seq [tags]
                     parts = line.split('\t')
                     if len(parts) >= 3:
                         name = parts[1]
@@ -364,14 +365,11 @@ def merge_gfa_files(gfa_files, output_path, original_graph_path):
                             all_s_lines[name] = line
 
                 elif line.startswith('L'):
-                    # L-line: L from from_orient to to_orient overlap
                     if line not in seen_l_lines:
                         seen_l_lines.add(line)
                         all_l_lines.append(line)
 
                 elif line.startswith('P'):
-                    # P-line: P path_name segments overlaps
-                    # Rename to avoid conflicts
                     parts = line.split('\t')
                     if len(parts) >= 3:
                         old_name = parts[1]
@@ -379,6 +377,36 @@ def merge_gfa_files(gfa_files, output_path, original_graph_path):
                         parts[1] = new_name
                         all_p_lines.append('\t'.join(parts))
                         path_counter += 1
+
+    # Then, read original GFA and add non-tangle nodes/edges
+    if original_graph_path and os.path.exists(original_graph_path):
+        with open(original_graph_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('H'):
+                    continue
+
+                if line.startswith('S'):
+                    parts = line.split('\t')
+                    if len(parts) >= 3:
+                        name = parts[1]
+                        # Only add if not already added (from tangle output) and not a tangle node
+                        if name not in seen_s_lines and name not in tangle_nodes:
+                            seen_s_lines.add(name)
+                            all_s_lines[name] = line
+
+                elif line.startswith('L'):
+                    # Add link if not already added
+                    if line not in seen_l_lines:
+                        # Check if this link involves tangle nodes
+                        parts = line.split('\t')
+                        if len(parts) >= 5:
+                            from_node = parts[1]
+                            to_node = parts[3]
+                            # Only add if both nodes are not in tangle
+                            if from_node not in tangle_nodes and to_node not in tangle_nodes:
+                                seen_l_lines.add(line)
+                                all_l_lines.append(line)
 
     # Write merged GFA
     with open(output_path, 'w') as f:
@@ -447,6 +475,8 @@ def main():
 
     # Process each tangle
     merged_gfa_files = []
+    concatenated_gfa_files = []
+    all_tangle_node_names = set()  # Collect all node names that are part of any tangle
 
     for tangle_idx, boundary_pairs in enumerate(all_tangles):
         try:
@@ -456,17 +486,39 @@ def main():
             )
             if merged_gfa:
                 merged_gfa_files.append(merged_gfa)
+
+                # Also collect concatenated GFA path
+                tangle_outdir = os.path.join(args.outdir, f"tangle_{tangle_idx}")
+                concat_gfa = os.path.join(tangle_outdir, f"{args.basename}_path.concatenated.gfa")
+                if os.path.exists(concat_gfa):
+                    concatenated_gfa_files.append(concat_gfa)
+
+                # Collect all node names from the tangle's merged GFA
+                if os.path.exists(merged_gfa):
+                    with open(merged_gfa, 'r') as f:
+                        for line in f:
+                            if line.startswith('S'):
+                                parts = line.strip().split('\t')
+                                if len(parts) >= 2:
+                                    all_tangle_node_names.add(parts[1])
+
         except Exception as e:
             logging.error(f"Failed to process tangle {tangle_idx + 1}: {e}")
             import traceback
             logging.error(traceback.format_exc())
             continue
 
-    # Merge all GFA files into final output
+    # Merge all GFA files into final output, preserving non-tangle nodes
     if merged_gfa_files and args.output_gfa:
         final_merged = os.path.join(args.outdir, f"{args.basename}_path.merged.gfa")
-        merge_gfa_files(merged_gfa_files, final_merged, args.graph)
+        merge_gfa_files(merged_gfa_files, final_merged, args.graph, all_tangle_node_names)
         logging.info(f"Final merged GFA: {final_merged}")
+
+        # Also merge concatenated GFA files
+        if concatenated_gfa_files:
+            final_concatenated = os.path.join(args.outdir, f"{args.basename}_path.concatenated.gfa")
+            merge_gfa_files(concatenated_gfa_files, final_concatenated, args.graph, all_tangle_node_names)
+            logging.info(f"Final concatenated GFA: {final_concatenated}")
 
     # Copy boundary nodes file to output directory
     if args.boundary_nodes and os.path.exists(args.boundary_nodes):
@@ -475,7 +527,12 @@ def main():
         shutil.copy2(args.boundary_nodes, dest)
         logging.info(f"Copied boundary nodes file to {dest}")
 
-    logging.info(f"All {total_tangles} tangle(s) processed successfully")
+    successful_count = len(merged_gfa_files)
+    failed_count = total_tangles - successful_count
+    if failed_count > 0:
+        logging.warning(f"Completed: {successful_count}/{total_tangles} tangles succeeded, {failed_count} failed")
+    else:
+        logging.info(f"All {total_tangles} tangle(s) processed successfully")
 
 def write_gfa_output(args, best_path, pathOptimizer, tangle):
     """Write traversal paths as GFA files for Pathfinder integration.
