@@ -19,6 +19,122 @@ def reverse_complement(sequence):
     complement = str.maketrans('ACGTacgt', 'TGCAtgca')
     return sequence.translate(complement)[::-1]
 
+def parse_boundary_file(boundary_file, original_graph=None, node_mapper=None):
+    """Parse boundary file with multiple tangles.
+
+    Supports two formats:
+    1. With empty lines separating tangles
+    2. Without empty lines - auto-detect tangles based on graph connectivity
+
+    Args:
+        boundary_file: Path to boundary nodes file
+        original_graph: Optional graph for auto-detection (nx.DiGraph)
+        node_mapper: Optional node mapper for auto-detection
+
+    Returns:
+        list of tangles, each tangle is a list of [node_name1, node_name2] pairs.
+    """
+    # First, try to parse with empty lines
+    tangles_with_separators = []
+    current_tangle = []
+    has_empty_lines = False
+
+    with open(boundary_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                has_empty_lines = True
+                if current_tangle:
+                    tangles_with_separators.append(current_tangle)
+                    current_tangle = []
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                current_tangle.append([parts[0], parts[1]])
+
+    if current_tangle:
+        tangles_with_separators.append(current_tangle)
+
+    # If we found empty lines, use the separator-based parsing
+    if has_empty_lines and len(tangles_with_separators) > 1:
+        return tangles_with_separators
+
+    # Otherwise, collect all pairs and try to auto-detect tangles
+    all_pairs = []
+    with open(boundary_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                all_pairs.append([parts[0], parts[1]])
+
+    if not all_pairs:
+        raise ValueError(f"No boundary node pairs found in {boundary_file}")
+
+    # If only one pair or no graph provided, treat as single tangle
+    if len(all_pairs) == 1 or original_graph is None or node_mapper is None:
+        return [all_pairs]
+
+    # Auto-detect tangles based on graph connectivity
+    return auto_detect_tangles(all_pairs, original_graph, node_mapper)
+
+
+def auto_detect_tangles(all_pairs, original_graph, node_mapper):
+    """Group boundary pairs into tangles based on graph connectivity.
+
+    Pairs that share paths through the graph belong to the same tangle.
+    """
+    import networkx as nx
+
+    # Create undirected graph for path finding
+    undirected_graph = original_graph.to_undirected()
+
+    # Parse all pairs to node IDs
+    parsed_pairs = []
+    for pair in all_pairs:
+        try:
+            node1 = node_mapper.parse_node_id(pair[0])
+            node2 = node_mapper.parse_node_id(pair[1])
+            if node1 in original_graph.nodes() and node2 in original_graph.nodes():
+                parsed_pairs.append((pair, node1, node2))
+        except:
+            continue
+
+    if not parsed_pairs:
+        return [all_pairs]
+
+    # For each pair, find the path between the nodes
+    pair_paths = []
+    for pair_info, node1, node2 in parsed_pairs:
+        try:
+            path = nx.shortest_path(undirected_graph, abs(node1), abs(node2))
+            pair_paths.append((pair_info, set(path)))
+        except nx.NetworkXNoPath:
+            # If no path, treat as separate tangle
+            pair_paths.append((pair_info, {abs(node1), abs(node2)}))
+
+    # Build connectivity graph between pairs
+    n = len(pair_paths)
+    connectivity = nx.Graph()
+    connectivity.add_nodes_from(range(n))
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            # If paths share nodes, pairs are in the same tangle
+            shared_nodes = pair_paths[i][1] & pair_paths[j][1]
+            if shared_nodes:
+                connectivity.add_edge(i, j)
+
+    # Find connected components - each component is a tangle
+    tangles = []
+    for component in nx.connected_components(connectivity):
+        tangle = [pair_paths[i][0] for i in component]
+        tangles.append(tangle)
+
+    return tangles if tangles else [all_pairs]
+
 def rc_node(node):
     """RC nodes stored as negative"""
     return -node
@@ -604,7 +720,7 @@ def identify_tangle_nodes(args, original_graph:nx.DiGraph, node_mapper:NodeIdMap
             log_assert(node1 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node1)} not found in the provided graph {args.graph} ")
             log_assert(node2 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node2)} not found in the provided graph {args.graph} ")
             boundary.append([node1, node2])
-    log_assert(len(boundary) >=1 and len(boundary) <= args.ploidy, f"Expected {args.ploidy} pairs of boundary nodes for {args.ploidy}-ploid organism, got {len(boundary)}")
+    log_assert(len(boundary) >= 1, f"Expected at least 1 pair of boundary nodes, got {len(boundary)}")
 
     indirect_graph = get_nonoriented_graph(original_graph)
 
@@ -715,7 +831,7 @@ def new_identify_tangle_nodes(args, original_graph:nx.DiGraph, dual_graph:nx.DiG
             log_assert(node1 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node1)} not found in the provided graph {args.graph} ")
             log_assert(node2 in original_graph.nodes(), f"Boundary node {node_mapper.node_id_to_name_safe(node2)} not found in the provided graph {args.graph} ")
             boundary.append([node1, node2])
-    log_assert(len(boundary) >=1 and len(boundary) <= args.ploidy, f"Expected {args.ploidy} pairs of boundary nodes for {args.ploidy}-ploid organism, got {len(boundary)}")
+    log_assert(len(boundary) >= 1, f"Expected at least 1 pair of boundary nodes, got {len(boundary)}")
 
     indirect_graph = get_nonoriented_graph(original_graph)
     indirect_dual_graph = get_nonoriented_dual_graph(dual_graph, node_mapper)

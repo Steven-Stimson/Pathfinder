@@ -226,7 +226,6 @@ public:
     int tttEarlyStoppingLimit = 15000;
     int tttLogLevel = 1;  // 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
     QString tttBasename = "traversal";
-    int tttPloidy = 2;  // 1=haploid, 2=diploid
 
     //These are the optional BLAST hit filters: whether they are used and
     //what their values are.

@@ -13,7 +13,8 @@ from src.MIP_optimizer import MIPOptimizer
 from src.tangle import Tangle
 from src.input_parsing import (
     parse_gfa, parse_gaf, parse_pairs, read_tangle_nodes, get_oriented_boundaries, identify_tangle_nodes, new_identify_tangle_nodes, read_coverage_file,
-    coverage_from_graph, verify_coverage, calculate_median_coverage, clean_tips, DETECTED_LOW_MEDIAN_COVERAGE_VARIATION, DETECTED_HIGH_MEDIAN_COVERAGE_VARIATION
+    coverage_from_graph, verify_coverage, calculate_median_coverage, clean_tips, parse_boundary_file,
+    DETECTED_LOW_MEDIAN_COVERAGE_VARIATION, DETECTED_HIGH_MEDIAN_COVERAGE_VARIATION
 )
 from src.graph_transformation import (
     get_canonical_rc_vertex,
@@ -151,7 +152,6 @@ def parse_arguments():
     parser.add_argument("--early-stopping-limit", type=int, default=15000, help="Early stopping limit for optimization (default: 15000).")
     parser.add_argument("--quality-threshold", type=int, default=20, help="Alignments with quality less than this will be filtered out, default 20")
     parser.add_argument("--basename", required=False, default="traversal", type=str, help="Basename for most of the output files, default `traversal`")
-    parser.add_argument("--ploidy", type=int, default=2, help="Ploidy level of the organism. Determines the number of boundary node pairs expected (default: 2, i.e. diploid).")
     parser.add_argument("--milp-time-limit", type=int, default=7200, help="Time limit for MILP solver in seconds (default: 7200 seconds = 2 hour).")
     parser.add_argument("--output-gfa", action="store_true", default=False, help="Output traversal paths as GFA files.")
     parser.add_argument("--output-mode", type=str, default="all", choices=["all", "merged", "per-path", "concatenated"],
@@ -172,45 +172,53 @@ def parse_arguments():
     args.alt_coverage = None
     return args
 
-def main():
-    # When running as a PyInstaller bundle, configure paths for bundled glpsol
-    if hasattr(sys, '_MEIPASS'):
-        os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
-        # Also set GLPK_CMD for pulp's GLPK solver
-        glpsol_name = 'glpsol.exe' if sys.platform == 'win32' else 'glpsol'
-        glpsol_path = os.path.join(sys._MEIPASS, glpsol_name)
-        if os.path.exists(glpsol_path):
-            os.environ['GLPK_CMD'] = glpsol_path
+def process_single_tangle(args, original_graph, dual_graph, cov, alt_cov, boundary_pairs, tangle_idx, total_tangles):
+    """Process a single tangle defined by boundary_pairs.
 
-    args = parse_arguments()
-    os.makedirs(args.outdir, exist_ok=True)
-    setup_logging(args)
-    logging.debug(f"args: {args}")
-    logging.info("Reading files...")
+    Args:
+        args: Command line arguments
+        original_graph: The full GFA graph
+        dual_graph: The dual graph
+        cov: Coverage dictionary
+        alt_cov: Alternative coverage dictionary (or None)
+        boundary_pairs: List of [node_name1, node_name2] pairs for this tangle
+        tangle_idx: Index of this tangle (0-based)
+        total_tangles: Total number of tangles
 
-    #TODO: separate function to clean Z connection, save them somewhere
-    original_graph = parse_gfa(args.graph, node_id_mapper)
-    if args.coverage:
-        cov = read_coverage_file(args.coverage, node_id_mapper)
-    else:
-        cov = coverage_from_graph(original_graph)
+    Returns:
+        Path to the merged GFA file for this tangle, or None if failed
+    """
+    import tempfile
+    from src.input_parsing import new_identify_tangle_nodes
 
-    if args.alt_coverage:
-        alt_cov = read_coverage_file(args.alt_coverage, node_id_mapper)
-        verify_coverage(alt_cov, original_graph, node_id_mapper)
-    # Verifying that coverage matches the graph
-    # For rare cases coverage may be missing for some nodes, will update with median then 
-    verify_coverage(cov, original_graph, node_id_mapper)
-    #boundary nodes: map from incoming to outgoing
+    logging.info(f"{'='*60}")
+    logging.info(f"Processing tangle {tangle_idx + 1}/{total_tangles} ({len(boundary_pairs)} boundary pairs)")
+    logging.info(f"{'='*60}")
 
-    # Here all sequence is stored in edges, junctions are new vertices
-    dual_graph = create_dual_graph(original_graph, node_id_mapper)
+    # Create temporary boundary file for this tangle
+    tangle_outdir = os.path.join(args.outdir, f"tangle_{tangle_idx}")
+    os.makedirs(tangle_outdir, exist_ok=True)
 
-    tangle_nodes, boundary_nodes = new_identify_tangle_nodes(args, original_graph, dual_graph, node_id_mapper)
-    
+    boundary_file = os.path.join(tangle_outdir, "boundary_nodes.tsv")
+    with open(boundary_file, 'w') as f:
+        for pair in boundary_pairs:
+            f.write(f"{pair[0]}\t{pair[1]}\n")
+
+    # Create a modified args for this tangle
+    tangle_args = argparse.Namespace(**vars(args))
+    tangle_args.outdir = tangle_outdir
+    tangle_args.boundary_nodes = boundary_file
+
+    # Identify tangle nodes
+    tangle_nodes, boundary_nodes = new_identify_tangle_nodes(tangle_args, original_graph, dual_graph, node_id_mapper)
+
+    # Auto-detect ploidy from boundary node pairs
+    ploidy = len(boundary_nodes)
+    logging.info(f"Detected ploidy: {ploidy} (from {ploidy} boundary node pairs)")
+
     nor_nodes = {abs(node) for node in tangle_nodes}
-    
-    # Create Tangle object with core structural information
+
+    # Create Tangle object
     tangle = Tangle(
         nodes=tangle_nodes,
         nor_nodes=nor_nodes,
@@ -218,46 +226,38 @@ def main():
         original_graph=original_graph,
         dual_graph=dual_graph,
         node_id_mapper=node_id_mapper,
-        ploidy=args.ploidy
+        ploidy=ploidy
     )
-    
-    # Validate ploidy matches boundary node pairs
-    num_boundary_pairs = len(boundary_nodes)
-    if num_boundary_pairs != args.ploidy:
-        logging.warning(
-            f"Ploidy ({args.ploidy}) does not match the number of boundary node pairs ({num_boundary_pairs}). "
-            f"Expected {args.ploidy} pairs for {args.ploidy}-ploid organism."
-        )
 
-    #TODO: do all operations on dual graph
+    # Clean tips and rebuild dual graph
     tangle.cleaned_tips = clean_tips(tangle, node_id_mapper)
     tangle.dual_graph = create_dual_graph(original_graph, node_id_mapper)
-    
+
     used_or_nodes = tangle.nodes.copy()
     for b in tangle.boundary_nodes:
         used_or_nodes.add(b)
         used_or_nodes.add(tangle.boundary_nodes[b])
         used_or_nodes.add(-b)
         used_or_nodes.add(-tangle.boundary_nodes[b])
-    
+
     tangle.coverage_dict = cov
-    tangle.coverage_range = calculate_median_coverage(tangle, args)
+    tangle.coverage_range = calculate_median_coverage(tangle, tangle_args)
     median_unique = (tangle.coverage_range[0] * DETECTED_LOW_MEDIAN_COVERAGE_VARIATION)
     tangle.median_unique_coverage = median_unique
-    
-    if args.alignment:
-        filtered_alignment_file = os.path.join(args.outdir, f"{args.basename}.q{args.quality_threshold}.used_alignments.gaf")
+
+    # Load alignments
+    if tangle_args.alignment:
+        filtered_alignment_file = os.path.join(tangle_outdir, f"{tangle_args.basename}.q{tangle_args.quality_threshold}.used_alignments.gaf")
         all_alignments = []
 
-        for align_file in args.alignment:
-            # Auto-detect format by extension
+        for align_file in tangle_args.alignment:
             base_name = os.path.basename(align_file).lower()
             if base_name.endswith('.pairs.gz') or base_name.endswith('.pairs'):
                 logging.info(f"Detected pairs format: {align_file}")
-                file_alignments = parse_pairs(align_file, used_or_nodes, None, args.quality_threshold, node_id_mapper, original_graph)
+                file_alignments = parse_pairs(align_file, used_or_nodes, None, tangle_args.quality_threshold, node_id_mapper, original_graph)
             elif base_name.endswith('.gaf.gz') or base_name.endswith('.gaf'):
                 logging.info(f"Detected GAF format: {align_file}")
-                file_alignments = parse_gaf(align_file, used_or_nodes, None, args.quality_threshold, node_id_mapper)
+                file_alignments = parse_gaf(align_file, used_or_nodes, None, tangle_args.quality_threshold, node_id_mapper)
             else:
                 logging.warning(f"Unknown alignment file format: {align_file}, skipping")
                 continue
@@ -265,7 +265,6 @@ def main():
             logging.info(f"  Loaded {len(file_alignments)} paths from {align_file}")
             all_alignments.extend(file_alignments)
 
-        # Write filtered alignments
         if filtered_alignment_file and all_alignments:
             with open(filtered_alignment_file, 'w') as f:
                 for i, path in enumerate(all_alignments):
@@ -279,16 +278,17 @@ def main():
         logging.info("No alignment file provided, skipping alignment-based scoring")
         alignments = []
         alignment_scorer = AlignmentScorer(alignments, original_graph, node_id_mapper)
+
+    # MIP optimization
     logging.info("Starting multiplicity counting...")
-    # TODO: instead of a_values we just use coverage
-    mip_optimizer = MIPOptimizer(node_id_mapper, time_limit=args.milp_time_limit)
+    mip_optimizer = MIPOptimizer(node_id_mapper, time_limit=tangle_args.milp_time_limit)
     equations, nonzeros, a_values, boundary_values = mip_optimizer.generate_MIP_equations(tangle, directed=True)
     best_solution, score, detected_coverage = mip_optimizer.solve_MIP(equations, nonzeros, boundary_values, a_values, tangle.coverage_range, original_graph)
-    if score > 0.2 and args.alt_coverage != None:
-        logging.warning(f"High coverage inconsistency score {score}, trying to re-calculate coverage from alternative (hifi) coverage file {args.alt_coverage}")
-        # Temporarily update tangle with alternative coverage
+
+    if score > 0.2 and alt_cov is not None:
+        logging.warning(f"High coverage inconsistency score {score}, trying alternative coverage")
         tangle.coverage_dict = alt_cov
-        tangle.coverage_range = calculate_median_coverage(tangle, args)
+        tangle.coverage_range = calculate_median_coverage(tangle, tangle_args)
         median_unique = (tangle.coverage_range[0] * DETECTED_LOW_MEDIAN_COVERAGE_VARIATION)
         tangle.median_unique_coverage = median_unique
         equations, nonzeros, a_values, boundary_values = mip_optimizer.generate_MIP_equations(tangle, directed=True)
@@ -299,28 +299,174 @@ def main():
             score = score_hifi
             detected_coverage = detected_coverage_hifi
         else:
-            logging.warning(f"Alternative coverage did not significantly improve MIP score {score_hifi} vs {score}, keeping original (ONT)")
-            # Restore original coverage
+            logging.warning(f"Alternative coverage did not significantly improve MIP score {score_hifi} vs {score}, keeping original")
             tangle.coverage_dict = cov
-            tangle.coverage_range = calculate_median_coverage(tangle, args)
+            tangle.coverage_range = calculate_median_coverage(tangle, tangle_args)
             tangle.median_unique_coverage = (tangle.coverage_range[0] * DETECTED_LOW_MEDIAN_COVERAGE_VARIATION)
-    # Store MIP solution in tangle
+
     tangle.multiplicities = best_solution
     tangle.detected_coverage = detected_coverage
-    
-    # Define output filename for multiplicities CSV
-    output_csv = os.path.join(args.outdir, args.basename + ".multiplicities.csv")
+
+    output_csv = os.path.join(tangle_outdir, tangle_args.basename + ".multiplicities.csv")
     mip_optimizer.write_multiplicities(output_csv, best_solution, cov)
 
-    #Splitting edges according to multiplicities
+    # Path optimization
     tangle.multi_graph = create_multi_dual_graph(tangle)
+    best_path, best_score, pathOptimizer = optimize_paths(tangle, alignment_scorer, tangle_args)
+    print_final_path_info(best_path, pathOptimizer, tangle, alignment_scorer, tangle_args)
+    print_warnings_summary(tangle_args)
 
-    best_path, best_score, pathOptimizer = optimize_paths(tangle, alignment_scorer, args)
-    print_final_path_info(best_path, pathOptimizer, tangle, alignment_scorer, args)
-    print_warnings_summary(args)
+    # Write GFA output
+    merged_gfa_path = None
+    if tangle_args.output_gfa:
+        write_gfa_output(tangle_args, best_path, pathOptimizer, tangle)
+        merged_gfa_path = os.path.join(tangle_outdir, f"{tangle_args.basename}_path.merged.gfa")
 
-    if args.output_gfa:
-        write_gfa_output(args, best_path, pathOptimizer, tangle)
+    return merged_gfa_path
+
+
+def merge_gfa_files(gfa_files, output_path, original_graph_path):
+    """Merge multiple merged.gfa files into a single file.
+
+    Args:
+        gfa_files: List of paths to merged.gfa files
+        output_path: Path to write the combined GFA
+        original_graph_path: Path to original GFA for header info
+    """
+    if not gfa_files:
+        return
+
+    all_s_lines = {}  # node_name -> S-line
+    all_l_lines = []  # L-lines
+    all_p_lines = []  # P-lines
+
+    seen_s_lines = set()
+    seen_l_lines = set()
+    path_counter = 0
+
+    for gfa_file in gfa_files:
+        if not gfa_file or not os.path.exists(gfa_file):
+            continue
+
+        with open(gfa_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+
+                if line.startswith('S'):
+                    # S-line: S name seq [tags]
+                    parts = line.split('\t')
+                    if len(parts) >= 3:
+                        name = parts[1]
+                        if name not in seen_s_lines:
+                            seen_s_lines.add(name)
+                            all_s_lines[name] = line
+
+                elif line.startswith('L'):
+                    # L-line: L from from_orient to to_orient overlap
+                    if line not in seen_l_lines:
+                        seen_l_lines.add(line)
+                        all_l_lines.append(line)
+
+                elif line.startswith('P'):
+                    # P-line: P path_name segments overlaps
+                    # Rename to avoid conflicts
+                    parts = line.split('\t')
+                    if len(parts) >= 3:
+                        old_name = parts[1]
+                        new_name = f"tangle_{path_counter}_{old_name}"
+                        parts[1] = new_name
+                        all_p_lines.append('\t'.join(parts))
+                        path_counter += 1
+
+    # Write merged GFA
+    with open(output_path, 'w') as f:
+        # Write header
+        f.write("H\tVN:Z:1.0\n")
+
+        # Write S-lines (sorted by name for consistency)
+        for name in sorted(all_s_lines.keys()):
+            f.write(all_s_lines[name] + '\n')
+
+        # Write L-lines
+        for l_line in all_l_lines:
+            f.write(l_line + '\n')
+
+        # Write P-lines
+        for p_line in all_p_lines:
+            f.write(p_line + '\n')
+
+    logging.info(f"Merged {len(gfa_files)} GFA files into {output_path}")
+    logging.info(f"  Total segments: {len(all_s_lines)}")
+    logging.info(f"  Total links: {len(all_l_lines)}")
+    logging.info(f"  Total paths: {len(all_p_lines)}")
+
+
+def main():
+    # When running as a PyInstaller bundle, configure paths for bundled glpsol
+    if hasattr(sys, '_MEIPASS'):
+        os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
+        glpsol_name = 'glpsol.exe' if sys.platform == 'win32' else 'glpsol'
+        glpsol_path = os.path.join(sys._MEIPASS, glpsol_name)
+        if os.path.exists(glpsol_path):
+            os.environ['GLPK_CMD'] = glpsol_path
+
+    args = parse_arguments()
+    os.makedirs(args.outdir, exist_ok=True)
+    setup_logging(args)
+    logging.debug(f"args: {args}")
+    logging.info("Reading files...")
+
+    # Parse graph and coverage (shared across all tangles)
+    original_graph = parse_gfa(args.graph, node_id_mapper)
+    if args.coverage:
+        cov = read_coverage_file(args.coverage, node_id_mapper)
+    else:
+        cov = coverage_from_graph(original_graph)
+
+    alt_cov = None
+    if args.alt_coverage:
+        alt_cov = read_coverage_file(args.alt_coverage, node_id_mapper)
+        verify_coverage(alt_cov, original_graph, node_id_mapper)
+
+    verify_coverage(cov, original_graph, node_id_mapper)
+
+    # Create dual graph (shared across all tangles)
+    dual_graph = create_dual_graph(original_graph, node_id_mapper)
+
+    # Parse boundary file - may contain multiple tangles
+    all_tangles = parse_boundary_file(args.boundary_nodes, original_graph, node_id_mapper)
+    total_tangles = len(all_tangles)
+
+    if total_tangles == 0:
+        logging.error("No tangles found in boundary file")
+        sys.exit(1)
+
+    logging.info(f"Found {total_tangles} tangle(s) in boundary file")
+
+    # Process each tangle
+    merged_gfa_files = []
+
+    for tangle_idx, boundary_pairs in enumerate(all_tangles):
+        try:
+            merged_gfa = process_single_tangle(
+                args, original_graph, dual_graph, cov, alt_cov,
+                boundary_pairs, tangle_idx, total_tangles
+            )
+            if merged_gfa:
+                merged_gfa_files.append(merged_gfa)
+        except Exception as e:
+            logging.error(f"Failed to process tangle {tangle_idx + 1}: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
+            continue
+
+    # Merge all GFA files into final output
+    if merged_gfa_files and args.output_gfa:
+        final_merged = os.path.join(args.outdir, f"{args.basename}_path.merged.gfa")
+        merge_gfa_files(merged_gfa_files, final_merged, args.graph)
+        logging.info(f"Final merged GFA: {final_merged}")
 
     # Copy boundary nodes file to output directory
     if args.boundary_nodes and os.path.exists(args.boundary_nodes):
@@ -328,6 +474,8 @@ def main():
         dest = os.path.join(args.outdir, "boundary_nodes.tsv")
         shutil.copy2(args.boundary_nodes, dest)
         logging.info(f"Copied boundary nodes file to {dest}")
+
+    logging.info(f"All {total_tangles} tangle(s) processed successfully")
 
 def write_gfa_output(args, best_path, pathOptimizer, tangle):
     """Write traversal paths as GFA files for Pathfinder integration.
