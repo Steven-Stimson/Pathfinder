@@ -330,11 +330,21 @@ def parse_gaf(gaf_file, interesting_nodes, filtered_file, quality_threshold, nod
             if path_id == "node":
                 continue
 
-            quality_score = int(parts[11])  # Assuming quality score is in the 11th column
-            if quality_score < quality_threshold:
+            num_cols = len(parts)
+            if num_cols >= 12:
+                # Standard GAF: quality in column 12, path in column 6
+                quality_score = int(parts[11])
+                if quality_score < quality_threshold:
+                    continue
+                gaf_path_str = parts[5]
+            elif num_cols == 2:
+                # Simple node-mapping format: name<TAB>path
+                gaf_path_str = parts[1]
+            else:
+                logging.warning(f"Skipping line with {num_cols} columns (expected 2 or >=12): {line.strip()[:80]}")
                 continue
 
-            nodes = parse_gaf_string(parts[5], node_mapper)
+            nodes = parse_gaf_string(gaf_path_str, node_mapper)
 
             filtered_nodes = filter_gaf_nodes(nodes, interesting_nodes)
 
